@@ -7,6 +7,7 @@ declare(strict_types=1);
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?php echo e($pageTitle . ' - ' . (string) config('app_name')); ?></title>
+    <link rel="icon" type="image/png" href="/assets/favicon.png">
     <link rel="stylesheet" href="/assets/style.css">
 </head>
 <body>
@@ -15,6 +16,8 @@ declare(strict_types=1);
             <div class="brand"><?php echo e((string) config('app_name')); ?></div>
             <nav class="topbar-actions">
                 <a href="/index.php" class="link">Dashboard</a>
+                <a href="/security.php" class="link">Security</a>
+                <a href="/updater.php" class="link">Update</a>
                 <a href="/logout.php" class="link">Logout</a>
             </nav>
         </div>
