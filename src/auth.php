@@ -14,7 +14,7 @@ function require_login(): void
     }
 }
 
-function attempt_login(string $username, string $password): bool
+function verify_credentials(string $username, string $password): bool
 {
     $expectedUser = (string) config('admin_username');
     $expectedHash = (string) config('admin_password_hash');
@@ -27,13 +27,14 @@ function attempt_login(string $username, string $password): bool
         return false;
     }
 
-    if (!password_verify($password, $expectedHash)) {
-        return false;
-    }
+    return password_verify($password, $expectedHash);
+}
 
+function login_user(string $username): void
+{
+    session_regenerate_id(true);
     $_SESSION['user_logged_in'] = true;
-    $_SESSION['user_name'] = $expectedUser;
-    return true;
+    $_SESSION['user_name'] = $username;
 }
 
 function logout(): void
