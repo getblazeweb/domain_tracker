@@ -62,7 +62,13 @@ $action = $mode === 'edit' ? 'domain_update' : 'domain_store';
 
     <label>
         DB Password
-        <input type="password" name="db_password" value="<?php echo e((string) ($domain['db_password'] ?? '')); ?>">
+        <div class="password-field">
+            <input type="password" name="db_password" value="<?php echo e((string) ($domain['db_password'] ?? '')); ?>">
+            <?php if ($mode === 'edit' && !empty($domain['db_password'])): ?>
+                <button type="button" class="button tiny reveal-input-btn">Show</button>
+                <button type="button" class="button tiny copy-input-btn">Copy</button>
+            <?php endif; ?>
+        </div>
         <?php if (!empty($errors['db_password'])): ?>
             <span class="field-error"><?php echo e($errors['db_password']); ?></span>
         <?php endif; ?>
@@ -75,3 +81,37 @@ $action = $mode === 'edit' ? 'domain_update' : 'domain_store';
         <button type="submit" class="button primary"><?php echo $mode === 'edit' ? 'Save Changes' : 'Create Domain'; ?></button>
     </div>
 </form>
+
+<script>
+document.querySelectorAll('.reveal-input-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        var input = btn.parentElement.querySelector('input');
+        if (!input) {
+            return;
+        }
+        var isPassword = input.getAttribute('type') === 'password';
+        input.setAttribute('type', isPassword ? 'text' : 'password');
+        btn.textContent = isPassword ? 'Hide' : 'Show';
+    });
+});
+
+document.querySelectorAll('.copy-input-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        var input = btn.parentElement.querySelector('input');
+        if (!input || !input.value) {
+            return;
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(input.value).then(function () {
+                btn.textContent = 'Copied';
+                setTimeout(function () { btn.textContent = 'Copy'; }, 1200);
+            });
+        } else {
+            input.select();
+            document.execCommand('copy');
+            btn.textContent = 'Copied';
+            setTimeout(function () { btn.textContent = 'Copy'; }, 1200);
+        }
+    });
+});
+</script>
