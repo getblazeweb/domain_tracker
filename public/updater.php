@@ -155,6 +155,43 @@ function should_exclude(string $relative): bool
     return false;
 }
 
+function append_changelog(string $basePath, array $entry): void
+{
+    $logPath = $basePath . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'changelog.json';
+    $entries = [];
+    if (file_exists($logPath)) {
+        $contents = file_get_contents($logPath);
+        if ($contents !== false) {
+            $decoded = json_decode($contents, true);
+            if (is_array($decoded)) {
+                $entries = $decoded;
+            }
+        }
+    }
+    $entries[] = $entry;
+    file_put_contents($logPath, json_encode($entries, JSON_PRETTY_PRINT));
+}
+
+function detect_excluded_changes(string $extractedRoot, array $files, string $basePath): array
+{
+    $changed = [];
+    foreach ($files as $relative) {
+        if (!should_exclude($relative)) {
+            continue;
+        }
+        $srcPath = $extractedRoot . DIRECTORY_SEPARATOR . $relative;
+        $destPath = $basePath . DIRECTORY_SEPARATOR . $relative;
+        if (!file_exists($destPath)) {
+            $changed[] = ['path' => $relative, 'status' => 'missing_local'];
+            continue;
+        }
+        if (hash_file('sha256', $srcPath) !== hash_file('sha256', $destPath)) {
+            $changed[] = ['path' => $relative, 'status' => 'changed'];
+        }
+    }
+    return $changed;
+}
+
 function copy_with_backup(string $src, string $destRoot, string $relative, string $backupRoot, array &$manifest): void
 {
     $dest = $destRoot . DIRECTORY_SEPARATOR . $relative;
@@ -479,6 +516,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (file_exists($flagPath)) {
                 unlink($flagPath);
             }
+            $excludedChanged = detect_excluded_changes($extractedRoot, $files, $basePath);
+            append_changelog($basePath, [
+                'timestamp' => date('c'),
+                'created' => $manifest['created'],
+                'overwritten' => $manifest['overwritten'],
+                'deleted' => $manifest['deleted'],
+                'excluded_changed' => $excludedChanged,
+            ]);
             $step(100, 'Update completed successfully.');
             echo "<div class=\"card\" style=\"margin-top:16px;\"><a class=\"button primary\" href=\"/updater.php\">Return to updater</a></div>";
             echo "</body></html>";
@@ -566,6 +611,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (file_exists($flagPath)) {
                 unlink($flagPath);
             }
+            append_changelog($basePath, [
+                'timestamp' => date('c'),
+                'rollback_to' => $target,
+            ]);
             $step(100, 'Rollback completed successfully.');
             echo "<div class=\"card\" style=\"margin-top:16px;\"><a class=\"button primary\" href=\"/updater.php\">Return to updater</a></div>";
             echo "</body></html>";
@@ -628,6 +677,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="alert alert-warn">
                 This will overwrite app files. Backups are stored in `data/backups/`.
             </div>
+
+            <?php
+            $logPath = $basePath . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'changelog.json';
+            $changelog = [];
+            if (file_exists($logPath)) {
+                $contents = file_get_contents($logPath);
+                if ($contents !== false) {
+                    $decoded = json_decode($contents, true);
+                    if (is_array($decoded)) {
+                        $changelog = array_reverse($decoded);
+                    }
+                }
+            }
+            ?>
+            <?php if (!empty($changelog)): ?>
+                <div class="card-section">
+                    <h2>Change Log</h2>
+                    <div class="table">
+                        <div class="table-row table-head">
+                            <div>Timestamp</div>
+                            <div>Created</div>
+                            <div>Overwritten</div>
+                            <div>Deleted</div>
+                            <div>Excluded Updates</div>
+                        </div>
+                        <?php foreach (array_slice($changelog, 0, 20) as $entry): ?>
+                            <div class="table-row">
+                                <div><?php echo htmlspecialchars((string) ($entry['timestamp'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></div>
+                                <div><?php echo (int) count($entry['created'] ?? []); ?></div>
+                                <div><?php echo (int) count($entry['overwritten'] ?? []); ?></div>
+                                <div><?php echo (int) count($entry['deleted'] ?? []); ?></div>
+                                <div>
+                                    <?php
+                                    $excluded = $entry['excluded_changed'] ?? [];
+                                    if (!empty($excluded)) {
+                                        $paths = array_map(function ($item) {
+                                            return $item['path'] ?? '';
+                                        }, $excluded);
+                                        echo htmlspecialchars(implode(', ', array_slice($paths, 0, 3)), ENT_QUOTES, 'UTF-8');
+                                        if (count($paths) > 3) {
+                                            echo '...';
+                                        }
+                                    } else {
+                                        echo 'None';
+                                    }
+                                    ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
 
             <form method="post" class="form">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
