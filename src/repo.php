@@ -11,6 +11,41 @@ function ensure_schema(PDO $pdo, string $schemaPath): void
         throw new RuntimeException('Failed to read schema.');
     }
     $pdo->exec($schema);
+
+    // Lightweight migrations for existing databases (add missing columns).
+    $tables = [
+        'domains' => [
+            'description' => 'TEXT',
+            'db_host' => 'TEXT',
+            'db_port' => 'TEXT',
+            'db_name' => 'TEXT',
+            'db_user' => 'TEXT',
+            'db_password_enc' => 'TEXT',
+        ],
+        'subdomains' => [
+            'description' => 'TEXT',
+            'db_host' => 'TEXT',
+            'db_port' => 'TEXT',
+            'db_name' => 'TEXT',
+            'db_user' => 'TEXT',
+            'db_password_enc' => 'TEXT',
+        ],
+    ];
+
+    foreach ($tables as $table => $columns) {
+        $existing = [];
+        $stmt = $pdo->query('PRAGMA table_info(' . $table . ')');
+        if ($stmt) {
+            foreach ($stmt->fetchAll() as $row) {
+                $existing[] = $row['name'];
+            }
+        }
+        foreach ($columns as $name => $type) {
+            if (!in_array($name, $existing, true)) {
+                $pdo->exec('ALTER TABLE ' . $table . ' ADD COLUMN ' . $name . ' ' . $type);
+            }
+        }
+    }
 }
 
 function get_domains(PDO $pdo): array
@@ -116,6 +151,97 @@ function count_subdomains_for_domain(PDO $pdo, int $domainId): int
     $stmt->execute([':domain_id' => $domainId]);
     $row = $stmt->fetch();
     return (int) ($row['total'] ?? 0);
+}
+
+function get_setting(PDO $pdo, string $key): ?string
+{
+    $stmt = $pdo->prepare('SELECT value FROM app_settings WHERE key = :key');
+    $stmt->execute([':key' => $key]);
+    $row = $stmt->fetch();
+    return $row ? (string) $row['value'] : null;
+}
+
+function set_setting(PDO $pdo, string $key, string $value): void
+{
+    $stmt = $pdo->prepare('
+        INSERT INTO app_settings (key, value)
+        VALUES (:key, :value)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value
+    ');
+    $stmt->execute([
+        ':key' => $key,
+        ':value' => $value,
+    ]);
+}
+
+function log_login_attempt(PDO $pdo, array $data): void
+{
+    $stmt = $pdo->prepare('
+        INSERT INTO login_attempts (username, ip_address, user_agent, success, reason, created_at)
+        VALUES (:username, :ip_address, :user_agent, :success, :reason, :created_at)
+    ');
+    $stmt->execute([
+        ':username' => $data['username'],
+        ':ip_address' => $data['ip_address'],
+        ':user_agent' => $data['user_agent'],
+        ':success' => $data['success'],
+        ':reason' => $data['reason'],
+        ':created_at' => $data['created_at'],
+    ]);
+}
+
+function count_failed_attempts(PDO $pdo, string $username, string $ip, int $windowSeconds): int
+{
+    $since = date('c', time() - $windowSeconds);
+    $stmt = $pdo->prepare('
+        SELECT COUNT(*) as total
+        FROM login_attempts
+        WHERE success = 0
+          AND username = :username
+          AND ip_address = :ip_address
+          AND created_at >= :since
+    ');
+    $stmt->execute([
+        ':username' => $username,
+        ':ip_address' => $ip,
+        ':since' => $since,
+    ]);
+    $row = $stmt->fetch();
+    return (int) ($row['total'] ?? 0);
+}
+
+function get_login_setting(PDO $pdo, string $key, ?string $default = null): ?string
+{
+    $stmt = $pdo->prepare('SELECT value FROM login_settings WHERE key = :key');
+    $stmt->execute([':key' => $key]);
+    $row = $stmt->fetch();
+    return $row ? (string) $row['value'] : $default;
+}
+
+function set_login_setting(PDO $pdo, string $key, string $value): void
+{
+    $stmt = $pdo->prepare('
+        INSERT INTO login_settings (key, value)
+        VALUES (:key, :value)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value
+    ');
+    $stmt->execute([
+        ':key' => $key,
+        ':value' => $value,
+    ]);
+}
+
+function list_login_attempts(PDO $pdo, int $limit = 50): array
+{
+    $stmt = $pdo->prepare('
+        SELECT *
+        FROM login_attempts
+        ORDER BY created_at DESC
+        LIMIT :limit
+    ');
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetchAll();
 }
 
 function get_subdomains_by_domain(PDO $pdo, int $domainId): array
