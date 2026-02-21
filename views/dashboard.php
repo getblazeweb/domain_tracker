@@ -1,6 +1,13 @@
 <?php
 declare(strict_types=1);
 ?>
+<?php if (!empty($updateAvailable)): ?>
+    <div class="alert alert-warn update-banner">
+        Update available (<?php echo (int) ($updateAvailable['count'] ?? 0); ?> file<?php echo ((int) ($updateAvailable['count'] ?? 0) === 1) ? '' : 's'; ?>). 
+        <a href="/updater.php" class="button">Open Updater</a>
+    </div>
+<?php endif; ?>
+
 <div class="page-header">
     <div>
         <h1>Dashboard</h1>
@@ -127,9 +134,10 @@ declare(strict_types=1);
                                     <div>
                                         <div class="label">Password</div>
                                         <div class="value mono">
-                                            <?php if (!empty($sub['db_password_plain'])): ?>
-                                                <span class="password-mask" data-password="<?php echo e((string) $sub['db_password_plain']); ?>">••••••••</span>
-                                                <button type="button" class="button tiny reveal-btn">Show</button>
+                                        <?php if (!empty($sub['db_password_plain'])): ?>
+                                            <span class="password-mask" data-password="<?php echo e((string) $sub['db_password_plain']); ?>">••••••••</span>
+                                            <button type="button" class="button tiny reveal-btn">Show</button>
+                                            <button type="button" class="button tiny copy-btn">Copy</button>
                                             <?php else: ?>
                                                 <span class="muted">Not set</span>
                                             <?php endif; ?>
@@ -156,6 +164,34 @@ document.querySelectorAll('.reveal-btn').forEach(function (btn) {
         } else {
             mask.textContent = '••••••••';
             btn.textContent = 'Show';
+        }
+    });
+});
+
+document.querySelectorAll('.copy-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        var mask = btn.previousElementSibling.previousElementSibling;
+        if (!mask) {
+            return;
+        }
+        var value = mask.getAttribute('data-password') || '';
+        if (!value) {
+            return;
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(value).then(function () {
+                btn.textContent = 'Copied';
+                setTimeout(function () { btn.textContent = 'Copy'; }, 1200);
+            });
+        } else {
+            var temp = document.createElement('textarea');
+            temp.value = value;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+            btn.textContent = 'Copied';
+            setTimeout(function () { btn.textContent = 'Copy'; }, 1200);
         }
     });
 });
