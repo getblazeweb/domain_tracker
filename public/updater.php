@@ -200,6 +200,48 @@ function recursive_scan(string $dir, string $root, array &$files): void
     }
 }
 
+function collect_local_paths(string $basePath, array &$paths, array $excludeRoots): void
+{
+    $items = scandir($basePath);
+    if ($items === false) {
+        return;
+    }
+    foreach ($items as $item) {
+        if ($item === '.' || $item === '..') {
+            continue;
+        }
+        $path = $basePath . DIRECTORY_SEPARATOR . $item;
+        $relative = ltrim(str_replace(dirname(__DIR__) . DIRECTORY_SEPARATOR, '', $path), DIRECTORY_SEPARATOR);
+        $first = explode(DIRECTORY_SEPARATOR, $relative)[0] ?? '';
+        if (in_array($first, $excludeRoots, true)) {
+            continue;
+        }
+        if (is_dir($path)) {
+            collect_local_paths($path, $paths, $excludeRoots);
+        } else {
+            $paths[] = $relative;
+        }
+    }
+}
+
+function remove_empty_dirs(string $basePath, array $excludeRoots): void
+{
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($basePath, RecursiveDirectoryIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::CHILD_FIRST
+    );
+    foreach ($iterator as $file) {
+        if ($file->isDir()) {
+            $relative = ltrim(str_replace($basePath . DIRECTORY_SEPARATOR, '', $file->getPathname()), DIRECTORY_SEPARATOR);
+            $first = explode(DIRECTORY_SEPARATOR, $relative)[0] ?? '';
+            if (in_array($first, $excludeRoots, true)) {
+                continue;
+            }
+            @rmdir($file->getPathname());
+        }
+    }
+}
+
 function latest_backup_dir(string $backupsRoot): ?string
 {
     if (!is_dir($backupsRoot)) {
@@ -392,6 +434,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $manifest = [
                 'created' => [],
                 'overwritten' => [],
+                'deleted' => [],
                 'timestamp' => $backupDirName,
             ];
 
@@ -403,6 +446,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $srcPath = $extractedRoot . DIRECTORY_SEPARATOR . $relative;
                 copy_with_backup($srcPath, $basePath, $relative, $backupFilesDir, $manifest);
             }
+
+            $step(75, 'Removing deleted files...');
+            $localFiles = [];
+            $excludeRoots = ['data', 'config'];
+            collect_local_paths($basePath, $localFiles, $excludeRoots);
+            $remoteSet = array_fill_keys($files, true);
+            foreach ($localFiles as $relative) {
+                if (should_exclude($relative)) {
+                    continue;
+                }
+                if (!isset($remoteSet[$relative])) {
+                    $path = $basePath . DIRECTORY_SEPARATOR . $relative;
+                    $backupPath = $backupFilesDir . DIRECTORY_SEPARATOR . $relative;
+                    $backupDir = dirname($backupPath);
+                    if (!is_dir($backupDir)) {
+                        mkdir($backupDir, 0755, true);
+                    }
+                    if (file_exists($path)) {
+                        copy($path, $backupPath);
+                        unlink($path);
+                        $manifest['deleted'][] = $relative;
+                    }
+                }
+            }
+            remove_empty_dirs($basePath, $excludeRoots);
 
             $step(85, 'Finalizing update...');
             file_put_contents($backupDir . DIRECTORY_SEPARATOR . 'manifest.json', json_encode($manifest, JSON_PRETTY_PRINT));
@@ -481,7 +549,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $step(70, 'Restoring previous versions...');
             $backupFilesDir = $backupDir . DIRECTORY_SEPARATOR . 'files';
-            foreach ($manifest['overwritten'] ?? [] as $relative) {
+            foreach (array_merge($manifest['overwritten'] ?? [], $manifest['deleted'] ?? []) as $relative) {
                 $backupPath = $backupFilesDir . DIRECTORY_SEPARATOR . $relative;
                 $destPath = $basePath . DIRECTORY_SEPARATOR . $relative;
                 $destDir = dirname($destPath);
