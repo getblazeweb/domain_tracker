@@ -28,3 +28,23 @@ CREATE TABLE IF NOT EXISTS subdomains (
     updated_at TEXT NOT NULL,
     FOREIGN KEY (domain_id) REFERENCES domains(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS login_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL,
+    ip_address TEXT NOT NULL,
+    user_agent TEXT NOT NULL,
+    success INTEGER NOT NULL,
+    reason TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS login_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
