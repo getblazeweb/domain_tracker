@@ -501,6 +501,109 @@ textarea:focus {
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal.is-open {
+    display: flex;
+}
+
+.modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.4);
+    cursor: pointer;
+}
+
+.modal-content {
+    position: relative;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2);
+    max-width: 520px;
+    width: 100%;
+    max-height: 90vh;
+    overflow: auto;
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    line-height: 1;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 4px;
+}
+
+.modal-close:hover {
+    color: #111827;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-body p {
+    margin: 0 0 14px;
+}
+
+.modal-body p:last-child {
+    margin-bottom: 0;
+}
+
+.modal-steps {
+    margin: 14px 0;
+    padding-left: 20px;
+}
+
+.modal-steps li {
+    margin-bottom: 12px;
+}
+
+.modal-steps li:last-child {
+    margin-bottom: 0;
+}
+
+.modal-body pre {
+    margin: 8px 0;
+    padding: 12px;
+    background: #f1f5f9;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 13px;
+}
+
+.modal-body code {
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 13px;
+}
+
+.modal-body pre code {
+    background: none;
+    padding: 0;
+}
+
 @media (max-width: 720px) {
     .container {
         padding: 16px 0 32px;
