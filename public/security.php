@@ -231,6 +231,37 @@ $otpauth = $pendingSecret !== ''
                 </form>
                 </div>
             <?php endif; ?>
+
+            <div class="card-section">
+                <h2>Encryption Key Rotation</h2>
+                <p class="muted">Rotate your APP_KEY to re-encrypt stored database passwords. Run the CLI script from your server.</p>
+                <button type="button" class="button" onclick="document.getElementById('rotate-key-modal').classList.add('is-open')">Rotate Encryption Keys</button>
+            </div>
+        </div>
+
+        <div id="rotate-key-modal" class="modal" role="dialog" aria-labelledby="rotate-key-modal-title" aria-modal="true">
+            <div class="modal-backdrop" onclick="document.getElementById('rotate-key-modal').classList.remove('is-open')"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="rotate-key-modal-title">Rotate Encryption Keys</h2>
+                    <button type="button" class="modal-close" onclick="document.getElementById('rotate-key-modal').classList.remove('is-open')" aria-label="Close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>Key rotation re-encrypts all stored database passwords with a new key. Run the script from your project root via SSH or your hosting control panel.</p>
+                    <ol class="modal-steps">
+                        <li><strong>Back up</strong> your database (<code>data/app.db</code>) and <code>.env</code> file.</li>
+                        <li><strong>Generate</strong> a new key: <code>php -r "echo bin2hex(random_bytes(32));"</code></li>
+                        <li><strong>Run</strong> the rotation script:
+                            <pre><code>php scripts/rotate_key.php</code></pre>
+                            When prompted, paste the new key. Or use an environment variable:
+                            <pre><code>APP_KEY_NEW=your_new_key php scripts/rotate_key.php</code></pre>
+                        </li>
+                        <li><strong>Update</strong> your <code>.env</code> file: replace <code>APP_KEY</code> with the new key.</li>
+                        <li><strong>Remove</strong> any temporary <code>APP_KEY_NEW</code> from your environment.</li>
+                    </ol>
+                    <p class="muted">The app will use the new key on the next request. No restart is required.</p>
+                </div>
+            </div>
         </div>
 
         <div class="card">
