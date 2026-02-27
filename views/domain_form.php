@@ -40,6 +40,32 @@ $action = $mode === 'edit' ? 'domain_update' : 'domain_store';
 
     <div class="form-grid">
         <label>
+            Registrar
+            <input type="text" name="registrar" value="<?php echo e((string) ($domain['registrar'] ?? '')); ?>" placeholder="e.g. Namecheap, Dynadot">
+        </label>
+
+        <label>
+            Expires
+            <input type="date" name="expires_at" value="<?php echo e((string) ($domain['expires_at'] ?? '')); ?>">
+        </label>
+
+        <label>
+            Renewal Price
+            <input type="text" name="renewal_price" value="<?php echo e((string) ($domain['renewal_price'] ?? '')); ?>" placeholder="e.g. 12.99">
+        </label>
+
+        <label>
+            Auto-renew
+            <select name="auto_renew">
+                <option value="">—</option>
+                <option value="1"<?php echo ((string) ($domain['auto_renew'] ?? '')) === '1' ? ' selected' : ''; ?>>Yes</option>
+                <option value="0"<?php echo ((string) ($domain['auto_renew'] ?? '')) === '0' ? ' selected' : ''; ?>>No</option>
+            </select>
+        </label>
+    </div>
+
+    <div class="form-grid">
+        <label>
             DB Host
             <input type="text" name="db_host" value="<?php echo e((string) ($domain['db_host'] ?? '')); ?>">
         </label>
