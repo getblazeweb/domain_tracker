@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../src/bootstrap.php';
 require_once __DIR__ . '/../src/update_check.php';
+require_once __DIR__ . '/../src/expiry_check.php';
 
 require_login();
 
@@ -54,6 +55,10 @@ switch ($action) {
             'name' => '',
             'url' => '',
             'description' => '',
+            'registrar' => '',
+            'expires_at' => '',
+            'renewal_price' => '',
+            'auto_renew' => '',
             'db_host' => '',
             'db_port' => '',
             'db_name' => '',
@@ -71,6 +76,10 @@ switch ($action) {
         $name = trim((string) ($_POST['name'] ?? ''));
         $url = trim((string) ($_POST['url'] ?? ''));
         $description = trim((string) ($_POST['description'] ?? ''));
+        $registrar = trim((string) ($_POST['registrar'] ?? ''));
+        $expiresAt = trim((string) ($_POST['expires_at'] ?? ''));
+        $renewalPrice = trim((string) ($_POST['renewal_price'] ?? ''));
+        $autoRenew = trim((string) ($_POST['auto_renew'] ?? ''));
         $dbHost = trim((string) ($_POST['db_host'] ?? ''));
         $dbPort = trim((string) ($_POST['db_port'] ?? ''));
         $dbName = trim((string) ($_POST['db_name'] ?? ''));
@@ -95,6 +104,10 @@ switch ($action) {
                 'name' => $name,
                 'url' => $url,
                 'description' => $description,
+                'registrar' => $registrar,
+                'expires_at' => $expiresAt,
+                'renewal_price' => $renewalPrice,
+                'auto_renew' => $autoRenew,
                 'db_host' => $dbHost,
                 'db_port' => $dbPort,
                 'db_name' => $dbName,
@@ -111,6 +124,10 @@ switch ($action) {
             'name' => $name,
             'url' => $url,
             'description' => $description,
+            'registrar' => $registrar,
+            'expires_at' => $expiresAt,
+            'renewal_price' => $renewalPrice,
+            'auto_renew' => $autoRenew,
             'db_host' => $dbHost,
             'db_port' => $dbPort,
             'db_name' => $dbName,
@@ -147,6 +164,10 @@ switch ($action) {
         $name = trim((string) ($_POST['name'] ?? ''));
         $url = trim((string) ($_POST['url'] ?? ''));
         $description = trim((string) ($_POST['description'] ?? ''));
+        $registrar = trim((string) ($_POST['registrar'] ?? ''));
+        $expiresAt = trim((string) ($_POST['expires_at'] ?? ''));
+        $renewalPrice = trim((string) ($_POST['renewal_price'] ?? ''));
+        $autoRenew = trim((string) ($_POST['auto_renew'] ?? ''));
         $dbHost = trim((string) ($_POST['db_host'] ?? ''));
         $dbPort = trim((string) ($_POST['db_port'] ?? ''));
         $dbName = trim((string) ($_POST['db_name'] ?? ''));
@@ -169,6 +190,10 @@ switch ($action) {
                 'name' => $name,
                 'url' => $url,
                 'description' => $description,
+                'registrar' => $registrar,
+                'expires_at' => $expiresAt,
+                'renewal_price' => $renewalPrice,
+                'auto_renew' => $autoRenew,
                 'db_host' => $dbHost,
                 'db_port' => $dbPort,
                 'db_name' => $dbName,
@@ -188,6 +213,10 @@ switch ($action) {
             'name' => $name,
             'url' => $url,
             'description' => $description,
+            'registrar' => $registrar,
+            'expires_at' => $expiresAt,
+            'renewal_price' => $renewalPrice,
+            'auto_renew' => $autoRenew,
             'db_host' => $dbHost,
             'db_port' => $dbPort,
             'db_name' => $dbName,
@@ -380,6 +409,103 @@ switch ($action) {
         redirect_to('/index.php');
         break;
 
+    case 'check_expiry':
+        $expiryData = expiry_check_run($pdo, true);
+        set_flash('success', 'Expiry data refreshed.');
+        redirect_to('/index.php?action=expiry');
+        break;
+
+    case 'expiry':
+        $pageTitle = 'Expiry Dashboard';
+        $expiryData = expiry_check_run($pdo, false);
+        $view = 'expiry';
+        break;
+
+    case 'domain_import':
+        $pageTitle = 'Import Domains';
+        $view = 'domain_import';
+        break;
+
+    case 'domain_import_process':
+        require_post();
+        verify_csrf((string) ($_POST['csrf_token'] ?? ''));
+        $csv = (string) ($_POST['csv_data'] ?? '');
+        $importErrors = [];
+        $imported = 0;
+        if ($csv !== '') {
+            $lines = array_map('trim', explode("\n", $csv));
+            $header = array_map('trim', str_getcsv(array_shift($lines) ?? ''));
+            $nameIdx = array_search('name', array_map('strtolower', $header));
+            $urlIdx = array_search('url', array_map('strtolower', $header));
+            if ($nameIdx === false || $urlIdx === false) {
+                $importErrors[] = 'CSV must have "name" and "url" columns.';
+            } else {
+                foreach ($lines as $i => $line) {
+                    if ($line === '') {
+                        continue;
+                    }
+                    $row = str_getcsv($line);
+                    $name = trim((string) ($row[$nameIdx] ?? ''));
+                    $url = trim((string) ($row[$urlIdx] ?? ''));
+                    if ($name === '' || $url === '') {
+                        continue;
+                    }
+                    $descIdx = array_search('description', array_map('strtolower', $header));
+                    $regIdx = array_search('registrar', array_map('strtolower', $header));
+                    $expIdx = array_search('expires_at', array_map('strtolower', $header));
+                    $priceIdx = array_search('renewal_price', array_map('strtolower', $header));
+                    $autoIdx = array_search('auto_renew', array_map('strtolower', $header));
+                    $dbHostIdx = array_search('db_host', array_map('strtolower', $header));
+                    $dbPortIdx = array_search('db_port', array_map('strtolower', $header));
+                    $dbNameIdx = array_search('db_name', array_map('strtolower', $header));
+                    $dbUserIdx = array_search('db_user', array_map('strtolower', $header));
+                    $dbPassIdx = array_search('db_password', array_map('strtolower', $header));
+                    $description = $descIdx !== false ? trim((string) ($row[$descIdx] ?? '')) : '';
+                    $registrar = $regIdx !== false ? trim((string) ($row[$regIdx] ?? '')) : '';
+                    $expiresAt = $expIdx !== false ? trim((string) ($row[$expIdx] ?? '')) : '';
+                    $renewalPrice = $priceIdx !== false ? trim((string) ($row[$priceIdx] ?? '')) : '';
+                    $autoRenew = $autoIdx !== false ? trim((string) ($row[$autoIdx] ?? '')) : '';
+                    $dbHost = $dbHostIdx !== false ? trim((string) ($row[$dbHostIdx] ?? '')) : '';
+                    $dbPort = $dbPortIdx !== false ? trim((string) ($row[$dbPortIdx] ?? '')) : '';
+                    $dbName = $dbNameIdx !== false ? trim((string) ($row[$dbNameIdx] ?? '')) : '';
+                    $dbUser = $dbUserIdx !== false ? trim((string) ($row[$dbUserIdx] ?? '')) : '';
+                    $dbPassword = $dbPassIdx !== false ? (string) ($row[$dbPassIdx] ?? '') : '';
+                    if (in_array(strtolower($autoRenew), ['1', 'yes', 'true', 'on'], true)) {
+                        $autoRenew = '1';
+                    } elseif (in_array(strtolower($autoRenew), ['0', 'no', 'false', 'off'], true)) {
+                        $autoRenew = '0';
+                    }
+                    $encrypted = ($dbPassword !== '' && config('app_key') !== '') ? encrypt_secret($dbPassword) : '';
+                    try {
+                        create_domain($pdo, [
+                            'name' => $name,
+                            'url' => $url,
+                            'description' => $description,
+                            'registrar' => $registrar,
+                            'expires_at' => $expiresAt,
+                            'renewal_price' => $renewalPrice,
+                            'auto_renew' => $autoRenew,
+                            'db_host' => $dbHost,
+                            'db_port' => $dbPort,
+                            'db_name' => $dbName,
+                            'db_user' => $dbUser,
+                            'db_password_enc' => $encrypted,
+                        ]);
+                        $imported++;
+                    } catch (Throwable $e) {
+                        $importErrors[] = "Row " . ($i + 2) . ": " . $e->getMessage();
+                    }
+                }
+            }
+        }
+        if (!empty($importErrors)) {
+            set_flash('error', 'Import completed with errors: ' . implode(' ', array_slice($importErrors, 0, 3)));
+        } else {
+            set_flash('success', "Imported {$imported} domain(s).");
+        }
+        redirect_to('/index.php');
+        break;
+
     case 'dashboard':
     default:
         $pageTitle = 'Dashboard';
@@ -411,6 +537,7 @@ switch ($action) {
         if (empty($updateAvailable['available'])) {
             $updateAvailable = null;
         }
+        $expiryAlert = expiry_check_run($pdo, false);
         $view = 'dashboard';
         break;
 }
