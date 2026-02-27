@@ -250,8 +250,10 @@ $otpauth = $pendingSecret !== ''
                     <p>Key rotation re-encrypts all stored database passwords with a new key. Run the script from your project root via SSH or your hosting control panel.</p>
                     <ol class="modal-steps">
                         <li><strong>Back up</strong> your database (<code>data/app.db</code>) and <code>.env</code> file.</li>
-                        <li><strong>Generate</strong> a new key: <code>php -r "echo bin2hex(random_bytes(32));"</code></li>
-                        <li><strong>Run</strong> the rotation script:
+                        <li><strong>Generate</strong> a new key:
+                            <pre><code>php -r "echo bin2hex(random_bytes(32));"</code></pre>
+                        </li>
+                        <li><strong>Run</strong> the rotation script from the project root (the directory containing <code>scripts/</code>):
                             <pre><code>php scripts/rotate_key.php</code></pre>
                             When prompted, paste the new key. Or use an environment variable:
                             <pre><code>APP_KEY_NEW=your_new_key php scripts/rotate_key.php</code></pre>
