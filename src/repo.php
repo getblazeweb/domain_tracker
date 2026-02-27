@@ -16,6 +16,10 @@ function ensure_schema(PDO $pdo, string $schemaPath): void
     $tables = [
         'domains' => [
             'description' => 'TEXT',
+            'registrar' => 'TEXT',
+            'expires_at' => 'TEXT',
+            'renewal_price' => 'TEXT',
+            'auto_renew' => 'TEXT',
             'db_host' => 'TEXT',
             'db_port' => 'TEXT',
             'db_name' => 'TEXT',
@@ -54,6 +58,46 @@ function get_domains(PDO $pdo): array
     return $stmt->fetchAll();
 }
 
+function get_domains_expiring(PDO $pdo, int $withinDays = 90): array
+{
+    $cutoff = date('Y-m-d', strtotime("+{$withinDays} days"));
+    $stmt = $pdo->prepare('
+        SELECT * FROM domains
+        WHERE expires_at IS NOT NULL AND expires_at != ""
+          AND expires_at <= :cutoff
+        ORDER BY expires_at ASC
+    ');
+    $stmt->execute([':cutoff' => $cutoff]);
+    return $stmt->fetchAll();
+}
+
+function get_domains_expiring_between(PDO $pdo, int $startDays, int $endDays): array
+{
+    $start = date('Y-m-d', strtotime("+{$startDays} days"));
+    $end = date('Y-m-d', strtotime("+{$endDays} days"));
+    $stmt = $pdo->prepare('
+        SELECT * FROM domains
+        WHERE expires_at IS NOT NULL AND expires_at != ""
+          AND expires_at >= :start AND expires_at <= :end
+        ORDER BY expires_at ASC
+    ');
+    $stmt->execute([':start' => $start, ':end' => $end]);
+    return $stmt->fetchAll();
+}
+
+function get_domains_overdue(PDO $pdo): array
+{
+    $today = date('Y-m-d');
+    $stmt = $pdo->prepare('
+        SELECT * FROM domains
+        WHERE expires_at IS NOT NULL AND expires_at != ""
+          AND expires_at < :today
+        ORDER BY expires_at ASC
+    ');
+    $stmt->execute([':today' => $today]);
+    return $stmt->fetchAll();
+}
+
 function get_domains_search(PDO $pdo, string $term): array
 {
     $like = '%' . $term . '%';
@@ -64,6 +108,8 @@ function get_domains_search(PDO $pdo, string $term): array
         WHERE d.name LIKE :term
            OR d.url LIKE :term
            OR IFNULL(d.description, "") LIKE :term
+           OR IFNULL(d.registrar, "") LIKE :term
+           OR IFNULL(d.expires_at, "") LIKE :term
            OR IFNULL(d.db_name, "") LIKE :term
            OR IFNULL(d.db_user, "") LIKE :term
            OR IFNULL(d.db_host, "") LIKE :term
@@ -91,14 +137,18 @@ function get_domain(PDO $pdo, int $id): ?array
 function create_domain(PDO $pdo, array $data): int
 {
     $stmt = $pdo->prepare('
-        INSERT INTO domains (name, url, description, db_host, db_port, db_name, db_user, db_password_enc, created_at, updated_at)
-        VALUES (:name, :url, :description, :db_host, :db_port, :db_name, :db_user, :db_password_enc, :created_at, :updated_at)
+        INSERT INTO domains (name, url, description, registrar, expires_at, renewal_price, auto_renew, db_host, db_port, db_name, db_user, db_password_enc, created_at, updated_at)
+        VALUES (:name, :url, :description, :registrar, :expires_at, :renewal_price, :auto_renew, :db_host, :db_port, :db_name, :db_user, :db_password_enc, :created_at, :updated_at)
     ');
     $now = date('c');
     $stmt->execute([
         ':name' => $data['name'],
         ':url' => $data['url'],
         ':description' => $data['description'],
+        ':registrar' => $data['registrar'] ?? '',
+        ':expires_at' => $data['expires_at'] ?? '',
+        ':renewal_price' => $data['renewal_price'] ?? '',
+        ':auto_renew' => $data['auto_renew'] ?? '',
         ':db_host' => $data['db_host'],
         ':db_port' => $data['db_port'],
         ':db_name' => $data['db_name'],
@@ -117,6 +167,10 @@ function update_domain(PDO $pdo, int $id, array $data): void
         SET name = :name,
             url = :url,
             description = :description,
+            registrar = :registrar,
+            expires_at = :expires_at,
+            renewal_price = :renewal_price,
+            auto_renew = :auto_renew,
             db_host = :db_host,
             db_port = :db_port,
             db_name = :db_name,
@@ -129,6 +183,10 @@ function update_domain(PDO $pdo, int $id, array $data): void
         ':name' => $data['name'],
         ':url' => $data['url'],
         ':description' => $data['description'],
+        ':registrar' => $data['registrar'] ?? '',
+        ':expires_at' => $data['expires_at'] ?? '',
+        ':renewal_price' => $data['renewal_price'] ?? '',
+        ':auto_renew' => $data['auto_renew'] ?? '',
         ':db_host' => $data['db_host'],
         ':db_port' => $data['db_port'],
         ':db_name' => $data['db_name'],
