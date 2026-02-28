@@ -1,0 +1,5 @@
+type,name,url,parent_domain,file_location,description,registrar,expires_at,renewal_price,auto_renew,db_host,db_port,db_name,db_user,db_password
+domain,My Domain,https://mydomain.com,https://mydomain.com,/var/www/html,Main business domain,namecheap.com,12/25/2028,14.99,yes,db-cluster-7a2f.node.us-east-1.aws.com,5432,production_void_99,svc_app_manager_x,K9#vL2!mPz8*qR5&
+subdomain,Customer Support,https://support.mydomain.com,https://mydomain.com,/var/www/html/analytics,Web analytics tracking,,,,,sql-internal.delta-bravo.internal,3306,shadow_ledger_db,admin_kestrel_42,B7!tG@9wYx#2sPz4
+,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,

@@ -1,4 +1,0 @@
-name,url,description,registrar,expires_at,renewal_price,auto_renew,db_host,db_port,db_name,db_user,db_password
-example.com,https://example.com,Main site,Namecheap,2025-12-31,12.99,1,localhost,3306,mydb,root,secret123
-mysite.net,https://mysite.net,Portfolio,Dynadot,2026-03-15,9.99,0,,,,
-blog.example.org,https://blog.example.org,Blog subdomain,NameSilo,2026-06-01,11.50,1,db.example.com,3306,blogdb,bloguser,
