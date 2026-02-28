@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-function expiry_check_run(PDO $pdo, bool $force = false, int $intervalSeconds = 3600): array
+function expiry_check_run(PDO $pdo, bool $force = false, int $intervalSeconds = 43200): array
 {
     $flagPath = base_path('data/expiry_check.json');
 
