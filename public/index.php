@@ -42,6 +42,22 @@ function require_post(): void
     }
 }
 
+function normalize_import_date(string $value): string
+{
+    $value = trim($value);
+    if ($value === '') {
+        return '';
+    }
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+        return $value;
+    }
+    if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $value, $m)) {
+        return sprintf('%04d-%02d-%02d', (int) $m[3], (int) $m[1], (int) $m[2]);
+    }
+    $ts = strtotime($value);
+    return $ts !== false ? date('Y-m-d', $ts) : $value;
+}
+
 $pdo = db();
 $action = (string) ($_GET['action'] ?? 'dashboard');
 $flash = get_flash();
@@ -429,7 +445,14 @@ switch ($action) {
     case 'domain_import_process':
         require_post();
         verify_csrf((string) ($_POST['csrf_token'] ?? ''));
-        $csv = (string) ($_POST['csv_data'] ?? '');
+        $csv = '';
+        if (!empty($_FILES['csv_file']['tmp_name']) && is_uploaded_file($_FILES['csv_file']['tmp_name'])) {
+            $content = file_get_contents($_FILES['csv_file']['tmp_name']);
+            $csv = $content !== false ? (string) $content : '';
+        }
+        if ($csv === '') {
+            $csv = (string) ($_POST['csv_data'] ?? '');
+        }
         $importErrors = [];
         $imported = 0;
         if ($csv !== '') {
@@ -473,7 +496,8 @@ switch ($action) {
 
                     $description = $descIdx !== false ? trim((string) ($row[$descIdx] ?? '')) : '';
                     $registrar = $regIdx !== false ? trim((string) ($row[$regIdx] ?? '')) : '';
-                    $expiresAt = $expIdx !== false ? trim((string) ($row[$expIdx] ?? '')) : '';
+                    $expiresAtRaw = $expIdx !== false ? trim((string) ($row[$expIdx] ?? '')) : '';
+                    $expiresAt = normalize_import_date($expiresAtRaw);
                     $renewalPrice = $priceIdx !== false ? trim((string) ($row[$priceIdx] ?? '')) : '';
                     $autoRenew = $autoIdx !== false ? trim((string) ($row[$autoIdx] ?? '')) : '';
                     $dbHost = $dbHostIdx !== false ? trim((string) ($row[$dbHostIdx] ?? '')) : '';
