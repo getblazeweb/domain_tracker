@@ -68,8 +68,7 @@ If you already have an existing `data/app.db`, you may need to add new columns m
 config/         App configuration
 data/           SQLite database file
 migrations/     Schema SQL
-public/         Web root (index, login, assets)
-samples/        Sample CSV for import
+public/         Web root (index, login, assets, import template)
 scripts/        CLI scripts (check_expiry, rotate_key)
 src/            App logic (auth, crypto, repo)
 views/          Templates
@@ -95,7 +94,7 @@ Import domains and nested subdomains from a spreadsheet.
 
 Put domain rows before their subdomains. Date format: `YYYY-MM-DD` or `MM/DD/YYYY`. Auto-renew: `1`/`0` or `yes`/`no`.
 
-Download the template from the Import page or see `samples/import.csv`.
+Download the template from the Import page or see `public/assets/import.csv`.
 
 ## Usage Tips
 - Use the dashboard search to find domains or subdomains quickly.
