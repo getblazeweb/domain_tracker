@@ -2,6 +2,8 @@
 - Easily add, view, edit, and delete all of your domains, subdomains, and their associated mySQL databases.
 - A lightweight PHP + SQLite web app for tracking domains, subdomains, file locations, and database credentials in one secure dashboard.
 
+> 🔗 **Live demo:** [domainstracker-demo.blazehost.co](https://domainstracker-demo.blazehost.co) — *login: demo / demo*
+
 ## Features
 - Secure login (single admin user)
 - File-based storage with SQLite
