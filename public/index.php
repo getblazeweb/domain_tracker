@@ -578,6 +578,13 @@ switch ($action) {
         redirect_to('/index.php');
         break;
 
+    case 'tour_dismiss':
+        require_post();
+        verify_csrf((string) ($_POST['csrf_token'] ?? ''));
+        set_setting($pdo, 'tour_completed', '1');
+        redirect_to('/index.php');
+        break;
+
     case 'dashboard':
     default:
         $pageTitle = 'Dashboard';
@@ -613,5 +620,8 @@ switch ($action) {
         $view = 'dashboard';
         break;
 }
+
+$tourCompleted = get_setting($pdo, 'tour_completed') === '1';
+$tourAutoShow = ($view === 'dashboard' && !$tourCompleted && isset($domains) && empty($domains));
 
 require base_path('views/layout.php');
