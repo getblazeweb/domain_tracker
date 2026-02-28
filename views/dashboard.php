@@ -27,14 +27,14 @@ declare(strict_types=1);
     </div>
     <div class="header-actions">
         <form method="get" class="search-form" action="/index.php">
-            <input type="text" name="q" placeholder="Search domains and subdomains" value="<?php echo e((string) ($search ?? '')); ?>">
+            <input type="text" name="q" placeholder="Search domains and subdomains" value="<?php echo e((string) ($search ?? '')); ?>" data-tour="search">
             <?php if (!empty($search)): ?>
                 <a class="button" href="/index.php">Clear</a>
             <?php endif; ?>
             <button type="submit" class="button primary">Search</button>
         </form>
-        <a class="button" href="/index.php?action=domain_import">Import CSV</a>
-        <a class="button primary" href="/index.php?action=domain_create">Add Domain</a>
+        <a class="button" href="/index.php?action=domain_import" data-tour="import">Import CSV</a>
+        <a class="button primary" href="/index.php?action=domain_create" data-tour="add-domain">Add Domain</a>
     </div>
 </div>
 
