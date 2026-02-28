@@ -21,7 +21,7 @@ jobs:
         run: ./vendor/bin/phpunit --testdox
       - name: Upload PHPUnit result cache
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: phpunit-result
           path: .phpunit.result.cache
