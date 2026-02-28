@@ -57,6 +57,13 @@ session_set_cookie_params([
 ]);
 session_start();
 
+// Force PHP to re-read this file when ?nocache=1 (fixes OPCache serving stale code)
+if (isset($_GET['nocache']) && function_exists('opcache_invalidate')) {
+    opcache_invalidate(__FILE__, true);
+    header('Location: ' . strtok($_SERVER['REQUEST_URI'] ?? '/updater.php', '?'));
+    exit;
+}
+
 function csrf_token(): string
 {
     if (empty($_SESSION['csrf_token'])) {
@@ -152,7 +159,31 @@ function should_exclude(string $relative): bool
     if ($relative === 'public/updater.php') {
         return true;
     }
-    return false;
+    $excludedPaths = [
+        '.github/workflows/php.yml',
+        '.github/workflows/phpunit.yml',
+        'composer.json',
+        'composer.lock',
+        'phpunit.xml',
+    ];
+    return in_array($relative, $excludedPaths, true);
+}
+
+/** Allowed directory prefixes and root files for Domain Tracker. Ignores anything else in the repo. */
+function is_project_file(string $relative): bool
+{
+    $relative = ltrim(str_replace('\\', '/', $relative), '/');
+    $first = explode('/', $relative)[0] ?? '';
+    $allowedDirs = ['public', 'src', 'views', 'migrations', 'scripts', 'demo', '.github'];
+    if (in_array($first, $allowedDirs, true)) {
+        return true;
+    }
+    $allowedRootFiles = [
+        'composer.json', 'composer.lock', 'phpunit.xml', 'phpunit.xml.dist',
+        'README.md', 'DESCRIPTION.md', 'env.example', '.env.example',
+        'seed_demo.php', '.gitignore', '.htaccess',
+    ];
+    return in_array($relative, $allowedRootFiles, true);
 }
 
 function append_changelog(string $basePath, array $entry): void
@@ -170,6 +201,89 @@ function append_changelog(string $basePath, array $entry): void
     }
     $entries[] = $entry;
     file_put_contents($logPath, json_encode($entries, JSON_PRETTY_PRINT));
+}
+
+/**
+ * Compute update preview (created, overwritten, deleted) without applying changes.
+ * Uses same rules as the run action: should_exclude + is_project_file.
+ */
+function update_preview(string $basePath, string $repoZipUrl): array
+{
+    $tempDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'domain_tracker_preview_' . bin2hex(random_bytes(6));
+    $zipPath = $tempDir . DIRECTORY_SEPARATOR . 'update.zip';
+    mkdir($tempDir, 0755, true);
+
+    try {
+        download_zip($repoZipUrl, $zipPath);
+        $zip = new ZipArchive();
+        if ($zip->open($zipPath) !== true) {
+            throw new RuntimeException('Unable to open update zip.');
+        }
+        $zip->extractTo($tempDir);
+        $zip->close();
+
+        $entries = array_values(array_filter(scandir($tempDir) ?: [], function ($entry) use ($tempDir) {
+            return $entry !== '.' && $entry !== '..' && is_dir($tempDir . DIRECTORY_SEPARATOR . $entry);
+        }));
+        if (empty($entries)) {
+            throw new RuntimeException('Update archive did not contain files.');
+        }
+
+        $extractedRoot = $tempDir . DIRECTORY_SEPARATOR . $entries[0];
+        $remoteFiles = [];
+        recursive_scan($extractedRoot, $extractedRoot, $remoteFiles);
+
+        $projectFilesFromRemote = array_filter($remoteFiles, function ($r) {
+            return !should_exclude($r) && is_project_file($r);
+        });
+
+        $created = [];
+        $overwritten = [];
+        foreach ($projectFilesFromRemote as $relative) {
+            $srcPath = $extractedRoot . DIRECTORY_SEPARATOR . $relative;
+            $destPath = $basePath . DIRECTORY_SEPARATOR . $relative;
+            if (!file_exists($destPath)) {
+                $created[] = $relative;
+            } elseif (hash_file('sha256', $srcPath) !== hash_file('sha256', $destPath)) {
+                $overwritten[] = $relative;
+            }
+        }
+
+        $localFiles = [];
+        $excludeRoots = ['data', 'config'];
+        collect_local_paths($basePath, $localFiles, $excludeRoots);
+        $remoteSet = array_fill_keys($projectFilesFromRemote, true);
+        $deleted = [];
+        foreach ($localFiles as $relative) {
+            if (should_exclude($relative) || !is_project_file($relative)) {
+                continue;
+            }
+            if (!isset($remoteSet[$relative])) {
+                $deleted[] = $relative;
+            }
+        }
+
+        return [
+            'created' => array_values($created),
+            'overwritten' => array_values($overwritten),
+            'deleted' => array_values($deleted),
+        ];
+    } finally {
+        if (is_dir($tempDir)) {
+            $iterator = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($tempDir, RecursiveDirectoryIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::CHILD_FIRST
+            );
+            foreach ($iterator as $file) {
+                if ($file->isDir()) {
+                    rmdir($file->getPathname());
+                } else {
+                    unlink($file->getPathname());
+                }
+            }
+            rmdir($tempDir);
+        }
+    }
 }
 
 function detect_excluded_changes(string $extractedRoot, array $files, string $basePath): array
@@ -330,6 +444,34 @@ function prune_backups(string $backupsRoot, int $keep): void
 $repoZipUrl = 'https://github.com/getblazeweb/domain_tracker/archive/refs/heads/main.zip';
 $messages = [];
 $errors = [];
+$demoMode = filter_var(config_value('demo_mode') ?? false, FILTER_VALIDATE_BOOLEAN);
+
+if ($demoMode) {
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<!doctype html><html lang="en"><head><meta charset="utf-8">';
+    echo '<meta name="viewport" content="width=device-width, initial-scale=1">';
+    echo '<title>Updater - Demo</title>';
+    echo '<link rel="icon" type="image/png" href="/assets/favicon.png">';
+    echo '<link rel="stylesheet" href="/assets/style.css"></head><body>';
+    echo '<header class="topbar"><div class="container topbar-inner">';
+    echo '<div class="brand">' . htmlspecialchars((string) config_value('app_name'), ENT_QUOTES, 'UTF-8') . '</div>';
+    echo '<nav class="topbar-actions">';
+    echo '<a href="/index.php" class="link">Dashboard</a>';
+    echo '<a href="/index.php?action=expiry" class="link">Expiry</a>';
+    echo '<a href="/index.php?action=domain_import" class="link">Import</a>';
+    echo '<a href="/security.php" class="link">Security</a>';
+    echo '<a href="/updater.php" class="link is-disabled">Update</a>';
+    echo '<a href="/index.php" class="link">Help</a>';
+    echo '<a href="/logout.php" class="link">Logout</a>';
+    echo '</nav></div></header>';
+    echo '<main class="container"><div class="card is-disabled">';
+    echo '<h1>Updater</h1>';
+    echo '<div class="alert alert-info">Demo mode: Updates are disabled.</div>';
+    echo '<p class="muted">This feature is not available in the demo instance.</p>';
+    echo '<a href="/index.php" class="button primary">Return to Dashboard</a>';
+    echo '</div></main></body></html>';
+    exit;
+}
 
 if (isset($_GET['logout'])) {
     logout();
@@ -476,10 +618,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ];
 
             $step(65, 'Applying changes...');
-            foreach ($files as $relative) {
-                if (should_exclude($relative)) {
-                    continue;
-                }
+            $projectFilesFromRemote = array_filter($files, function ($r) {
+                return !should_exclude($r) && is_project_file($r);
+            });
+            foreach ($projectFilesFromRemote as $relative) {
                 $srcPath = $extractedRoot . DIRECTORY_SEPARATOR . $relative;
                 copy_with_backup($srcPath, $basePath, $relative, $backupFilesDir, $manifest);
             }
@@ -488,9 +630,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $localFiles = [];
             $excludeRoots = ['data', 'config'];
             collect_local_paths($basePath, $localFiles, $excludeRoots);
-            $remoteSet = array_fill_keys($files, true);
+            $remoteSet = array_fill_keys($projectFilesFromRemote, true);
             foreach ($localFiles as $relative) {
-                if (should_exclude($relative)) {
+                if (should_exclude($relative) || !is_project_file($relative)) {
                     continue;
                 }
                 if (!isset($remoteSet[$relative])) {
@@ -628,6 +770,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    if ($action === 'preview') {
+        $flagPath = $basePath . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'update_available.json';
+        if (!file_exists($flagPath)) {
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'No update available. Run Check for Updates first.']);
+            exit;
+        }
+        try {
+            $preview = update_preview($basePath, $repoZipUrl);
+            header('Content-Type: application/json');
+            echo json_encode($preview);
+        } catch (Throwable $e) {
+            header('Content-Type: application/json');
+            http_response_code(500);
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+        exit;
+    }
+
     if ($action === 'check') {
         require_once $basePath . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'update_check.php';
         $result = update_check_run($basePath, true);
@@ -640,12 +801,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
+// Prevent browser caching so updates to this page are visible
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
 ?>
 <!doctype html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <title>Updater</title>
     <link rel="icon" type="image/png" href="/assets/favicon.png">
     <link rel="stylesheet" href="/assets/style.css">
@@ -672,7 +838,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <p class="muted">Safely update app files from the repository. Your database and env files are preserved.</p>
 
             <?php foreach ($messages as $msg): ?>
-                <div class="alert alert-success"><?php echo htmlspecialchars($msg, ENT_QUOTES, 'UTF-8'); ?></div>
+                <div class="alert alert-success">
+                    <?php echo htmlspecialchars($msg, ENT_QUOTES, 'UTF-8'); ?>
+                    <?php if (str_starts_with((string) $msg, 'Update available')): ?>
+                        <button type="button" class="button view-update-details-btn" style="margin-left:12px; vertical-align:middle;">View details</button>
+                    <?php endif; ?>
+                </div>
             <?php endforeach; ?>
 
             <?php foreach ($errors as $err): ?>
@@ -735,11 +906,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             <?php endif; ?>
 
-            <form method="post" class="form">
-                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
-                <input type="hidden" name="action" value="check">
-                <button type="submit" class="button">Check for Updates</button>
-            </form>
+            <div class="form" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                <form method="post" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="action" value="check">
+                    <button type="submit" class="button">Check for Updates</button>
+                </form>
+                <button type="button" class="button view-update-details-btn">View update details</button>
+            </div>
 
             <form method="post" class="form" style="margin-top:12px;">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
@@ -770,5 +944,168 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </form>
         </div>
     </main>
+
+    <div id="updateDetailsModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="updateDetailsTitle" hidden>
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2 id="updateDetailsTitle">Update details</h2>
+                <button type="button" class="modal-close" id="closeUpdateDetailsModal" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="updateDetailsLoading" class="muted">Loading...</div>
+                <div id="updateDetailsError" class="alert alert-error" hidden></div>
+                <div id="updateDetailsContent" hidden>
+                    <div id="updateDetailsCreated" class="update-details-section">
+                        <h3>Created</h3>
+                        <ul id="updateDetailsCreatedList"></ul>
+                    </div>
+                    <div id="updateDetailsOverwritten" class="update-details-section">
+                        <h3>Overwritten</h3>
+                        <ul id="updateDetailsOverwrittenList"></ul>
+                    </div>
+                    <div id="updateDetailsDeleted" class="update-details-section">
+                        <h3>Deleted</h3>
+                        <ul id="updateDetailsDeletedList"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        var csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
+        var viewBtns = document.querySelectorAll('.view-update-details-btn');
+        var modal = document.getElementById('updateDetailsModal');
+        var closeBtn = document.getElementById('closeUpdateDetailsModal');
+        var loading = document.getElementById('updateDetailsLoading');
+        var errorEl = document.getElementById('updateDetailsError');
+        var content = document.getElementById('updateDetailsContent');
+
+        if (!viewBtns.length) return;
+
+        function showModal() {
+            modal.hidden = false;
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function hideModal() {
+            modal.hidden = true;
+            modal.style.display = '';
+            document.body.style.overflow = '';
+        }
+
+        function renderList(container, items) {
+            container.innerHTML = '';
+            items.forEach(function(path) {
+                var li = document.createElement('li');
+                li.textContent = path;
+                li.title = path;
+                container.appendChild(li);
+            });
+        }
+
+        function handleViewDetails() {
+            showModal();
+            loading.hidden = false;
+            errorEl.hidden = true;
+            content.hidden = true;
+
+            var formData = new FormData();
+            formData.append('csrf_token', csrfToken);
+            formData.append('action', 'preview');
+
+            fetch('/updater.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                loading.hidden = true;
+                if (data.error) {
+                    errorEl.textContent = data.error;
+                    errorEl.hidden = false;
+                    return;
+                }
+                content.hidden = false;
+                renderList(document.getElementById('updateDetailsCreatedList'), data.created || []);
+                renderList(document.getElementById('updateDetailsOverwrittenList'), data.overwritten || []);
+                renderList(document.getElementById('updateDetailsDeletedList'), data.deleted || []);
+                document.getElementById('updateDetailsCreated').hidden = !(data.created && data.created.length);
+                document.getElementById('updateDetailsOverwritten').hidden = !(data.overwritten && data.overwritten.length);
+                document.getElementById('updateDetailsDeleted').hidden = !(data.deleted && data.deleted.length);
+            })
+            .catch(function(err) {
+                loading.hidden = true;
+                errorEl.textContent = 'Failed to load update details.';
+                errorEl.hidden = false;
+            });
+        }
+        viewBtns.forEach(function(btn) { btn.addEventListener('click', handleViewDetails); });
+
+        closeBtn.addEventListener('click', hideModal);
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) hideModal();
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && !modal.hidden) hideModal();
+        });
+    })();
+    </script>
+
+    <style>
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+    .modal-card {
+        background: var(--card-bg, #fff);
+        border-radius: 8px;
+        max-width: 560px;
+        width: 90%;
+        max-height: 80vh;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border-color, #e0e0e0);
+    }
+    .modal-header h2 { margin: 0; font-size: 1.25rem; }
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        line-height: 1;
+        padding: 0 4px;
+        color: var(--text-muted, #666);
+    }
+    .modal-close:hover { color: var(--text-color, #333); }
+    .modal-body {
+        padding: 20px;
+        overflow-y: auto;
+        max-height: calc(80vh - 80px);
+    }
+    .update-details-section { margin-bottom: 16px; }
+    .update-details-section h3 { margin: 0 0 8px; font-size: 0.9rem; }
+    .update-details-section ul {
+        margin: 0;
+        padding-left: 20px;
+        font-family: monospace;
+        font-size: 0.85rem;
+        word-break: break-all;
+    }
+    .update-details-section li { margin: 4px 0; }
+    </style>
 </body>
 </html>
