@@ -109,6 +109,19 @@ a {
     margin-bottom: 16px;
 }
 
+.card.is-disabled,
+.is-disabled {
+    opacity: 0.6;
+    pointer-events: none;
+    cursor: not-allowed;
+}
+
+.topbar .link.is-disabled {
+    color: #94a3b8;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
 .card-header {
     display: grid;
     grid-template-columns: 1fr auto auto;
@@ -174,6 +187,15 @@ a {
 .button.tiny {
     padding: 4px 10px;
     font-size: 12px;
+}
+
+@keyframes refresh-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4); }
+    50% { box-shadow: 0 0 0 6px rgba(37, 99, 235, 0); }
+}
+
+.button.refresh-attention {
+    animation: refresh-pulse 2s ease-in-out infinite;
 }
 
 .link {
