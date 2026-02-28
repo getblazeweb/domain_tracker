@@ -7,6 +7,9 @@
 - File-based storage with SQLite
 - Encrypted database passwords at rest (AES-256-GCM)
 - CRUD for domains and subdomains
+- Registrar metadata and expiry tracking
+- Expiry dashboard and scheduled expiry checks
+- CSV import for migrating from spreadsheets
 - Search across domains and subdomains
 - Collapsible cards for easy navigation
 - Clean, responsive UI
@@ -36,10 +39,24 @@ php -r "echo password_hash('your-password', PASSWORD_DEFAULT);"
 
 Then visit `/login.php` to sign in. The SQLite database will be created automatically at `data/app.db`.
 
+## Security
+- **Authentication**: Session-based login with a single admin username and password hash from `.env`. Optional TOTP-based 2FA is supported, and failed attempts are rate-limited and stored in the `login_attempts` table (username, IP, user agent, reason).
+- **Encryption**: Database passwords are encrypted at rest using AES-256-GCM with a key derived from `APP_KEY`. If `APP_KEY` is missing, database passwords are not saved.
+- **Backups**: Backups are not automated by the app. Back up `data/app.db` and your `.env` file together, and keep `APP_KEY` safe so encrypted values can be decrypted later.
+- **Key rotation**: Use the CLI script to re-encrypt all stored database passwords with a new key. From the project root, run `php scripts/rotate_key.php` (or `APP_KEY_NEW=your_new_key php scripts/rotate_key.php`), then update `APP_KEY` in your `.env` file. See the Security page for full instructions.
+- **Logs and credentials**: The app logs login attempts only (no database credentials). Database usernames/passwords are never written to logs by the app.
+
+### Key rotation
+
+1. Back up `data/app.db` and `.env`.
+2. Generate a new key: `php -r "echo bin2hex(random_bytes(32));"`
+3. Run: `php scripts/rotate_key.php` (paste the new key when prompted) or `APP_KEY_NEW=your_new_key php scripts/rotate_key.php`.
+4. Update `.env`: replace `APP_KEY` with the new key.
+5. Remove any temporary `APP_KEY_NEW` from your environment.
+
 ## Security Notes
 - Keep the web root pointed at `public/` so `.env`, `config/`, and `data/` are not exposed.
 - The app includes `.htaccess` files to deny access to sensitive folders, but do not rely on this alone.
-- Database passwords are encrypted using `APP_KEY`. If `APP_KEY` is missing, passwords will not be saved.
 
 ## Database Schema
 The database is initialized automatically from `migrations/001_init.sql` on first run.
@@ -52,9 +69,33 @@ config/         App configuration
 data/           SQLite database file
 migrations/     Schema SQL
 public/         Web root (index, login, assets)
+samples/        Sample CSV for import
+scripts/        CLI scripts (check_expiry, rotate_key)
 src/            App logic (auth, crypto, repo)
 views/          Templates
 ```
+
+## Expiry Alerts
+
+Domains can have an expiry date, registrar, renewal price, and auto-renew flag. The **Expiry** dashboard shows domains expiring in 7, 30, 60, and 90 days. Run the scheduled task from the project root to refresh or click the button to refresh:
+
+```
+php scripts/check_expiry.php
+```
+
+Add to cron (e.g. daily at 6am): `0 6 * * * cd /path/to/project && php scripts/check_expiry.php`
+
+## CSV Import
+
+Import domains and nested subdomains from a spreadsheet.
+
+**Domains:** `type`=domain (or omit), `name`, `url`. Optional: description, registrar, expires_at, renewal_price, auto_renew, db_host, db_port, db_name, db_user, db_password.
+
+**Subdomains:** `type`=subdomain, `parent_domain` (domain name or url), `name`, `url`, `file_location`. Optional: description, db_host, db_port, db_name, db_user, db_password.
+
+Put domain rows before their subdomains. Date format: `YYYY-MM-DD` or `MM/DD/YYYY`. Auto-renew: `1`/`0` or `yes`/`no`.
+
+Download the template from the Import page or see `samples/import.csv`.
 
 ## Usage Tips
 - Use the dashboard search to find domains or subdomains quickly.
