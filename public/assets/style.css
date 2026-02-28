@@ -616,6 +616,108 @@ textarea:focus {
     padding: 0;
 }
 
+/* Tour overlay */
+.tour-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+}
+
+.tour-overlay.is-open {
+    display: block;
+}
+
+.tour-backdrop {
+    position: absolute;
+    inset: 0;
+    pointer-events: auto;
+}
+
+.tour-backdrop-panel {
+    position: absolute;
+    background: rgba(15, 23, 42, 0.5);
+}
+
+#tour-backdrop-full {
+    inset: 0;
+}
+
+.tour-backdrop-cutout {
+    pointer-events: auto;
+}
+
+.tour-spotlight {
+    position: absolute;
+    pointer-events: none;
+    border: 2px solid #2563eb;
+    border-radius: 8px;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+}
+
+.tour-card {
+    position: fixed;
+    z-index: 2001;
+    background: #fff;
+    border-radius: 14px;
+    padding: 20px;
+    max-width: 360px;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+    pointer-events: auto;
+}
+
+.tour-progress {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 8px;
+}
+
+.tour-title {
+    margin: 0 0 10px;
+    font-size: 18px;
+}
+
+.tour-message {
+    margin: 0 0 18px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #374151;
+}
+
+.tour-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.tour-nav {
+    display: flex;
+    gap: 10px;
+}
+
+.tour-skip {
+    color: #6b7280;
+}
+
+.tour-skip:hover {
+    color: #111827;
+}
+
+.topbar .tour-help-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font: inherit;
+    padding: 0;
+    margin-left: 16px;
+}
+
+.topbar .tour-help-btn:hover {
+    text-decoration: underline;
+}
+
 @media (max-width: 720px) {
     .container {
         padding: 16px 0 32px;
