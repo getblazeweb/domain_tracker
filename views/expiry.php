@@ -10,7 +10,7 @@ $within90 = $expiryData['within_90'] ?? [];
 <div class="page-header">
     <div>
         <h1>Expiry Dashboard</h1>
-        <p class="muted">Domains expiring in the next 90 days. Run <code>php scripts/check_expiry.php</code> from the project root to refresh.</p>
+        <p class="muted">Domains expiring in the next 90 days.</p>
     </div>
     <div class="header-actions">
         <a class="button" href="/index.php?action=check_expiry">Refresh</a>
