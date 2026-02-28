@@ -134,6 +134,18 @@ function get_domain(PDO $pdo, int $id): ?array
     return $row ?: null;
 }
 
+function get_domain_by_name_or_url(PDO $pdo, string $nameOrUrl): ?array
+{
+    $key = trim($nameOrUrl);
+    if ($key === '') {
+        return null;
+    }
+    $stmt = $pdo->prepare('SELECT * FROM domains WHERE name = :key OR url = :key2');
+    $stmt->execute([':key' => $key, ':key2' => $key]);
+    $row = $stmt->fetch();
+    return $row ?: null;
+}
+
 function create_domain(PDO $pdo, array $data): int
 {
     $stmt = $pdo->prepare('
