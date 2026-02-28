@@ -1,0 +1,1 @@
+{"version":1,"defects":{"RepoTest::test_create_and_retrieve_domain":4},"times":{"CryptoTest::test_encrypt_and_decrypt_roundtrip":0.003,"CryptoTest::test_empty_string_returns_empty":0,"RepoTest::test_create_and_retrieve_domain":0.001,"RepoTest::test_get_domains_returns_empty_when_none_exist":0.001}}
