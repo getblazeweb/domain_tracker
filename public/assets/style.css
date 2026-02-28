@@ -629,39 +629,60 @@ textarea:focus {
 }
 
 .tour-backdrop {
-    position: absolute;
-    inset: 0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     pointer-events: auto;
+    z-index: 1;
 }
 
 .tour-backdrop-panel {
-    position: absolute;
-    background: rgba(15, 23, 42, 0.5);
+    position: fixed;
+    background: rgba(15, 23, 42, 0.55);
+    z-index: 1;
 }
 
 #tour-backdrop-full {
-    inset: 0;
-}
-
-.tour-backdrop-cutout {
-    pointer-events: auto;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
 }
 
 .tour-spotlight {
-    position: absolute;
+    position: fixed;
     pointer-events: none;
+    background: transparent;
     border: 2px solid #2563eb;
     border-radius: 8px;
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+    z-index: 2;
+    visibility: hidden;
+    left: -9999px;
+}
+
+.tour-card-wrapper {
+    position: fixed;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+}
+
+.tour-card-wrapper--centered {
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .tour-card {
-    position: fixed;
-    z-index: 2001;
+    position: relative;
+    z-index: 3;
     background: #fff;
     border-radius: 14px;
     padding: 20px;
-    max-width: 360px;
+    width: 360px;
+    max-width: calc(100vw - 32px);
     box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
     pointer-events: auto;
 }
