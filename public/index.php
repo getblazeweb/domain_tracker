@@ -435,11 +435,26 @@ switch ($action) {
         if ($csv !== '') {
             $lines = array_map('trim', explode("\n", $csv));
             $header = array_map('trim', str_getcsv(array_shift($lines) ?? ''));
-            $nameIdx = array_search('name', array_map('strtolower', $header));
-            $urlIdx = array_search('url', array_map('strtolower', $header));
+            $headerLower = array_map('strtolower', $header);
+            $nameIdx = array_search('name', $headerLower);
+            $urlIdx = array_search('url', $headerLower);
             if ($nameIdx === false || $urlIdx === false) {
                 $importErrors[] = 'CSV must have "name" and "url" columns.';
             } else {
+                $typeIdx = array_search('type', $headerLower);
+                $parentIdx = array_search('parent_domain', $headerLower);
+                $fileLocIdx = array_search('file_location', $headerLower);
+                $descIdx = array_search('description', $headerLower);
+                $regIdx = array_search('registrar', $headerLower);
+                $expIdx = array_search('expires_at', $headerLower);
+                $priceIdx = array_search('renewal_price', $headerLower);
+                $autoIdx = array_search('auto_renew', $headerLower);
+                $dbHostIdx = array_search('db_host', $headerLower);
+                $dbPortIdx = array_search('db_port', $headerLower);
+                $dbNameIdx = array_search('db_name', $headerLower);
+                $dbUserIdx = array_search('db_user', $headerLower);
+                $dbPassIdx = array_search('db_password', $headerLower);
+
                 foreach ($lines as $i => $line) {
                     if ($line === '') {
                         continue;
@@ -450,16 +465,12 @@ switch ($action) {
                     if ($name === '' || $url === '') {
                         continue;
                     }
-                    $descIdx = array_search('description', array_map('strtolower', $header));
-                    $regIdx = array_search('registrar', array_map('strtolower', $header));
-                    $expIdx = array_search('expires_at', array_map('strtolower', $header));
-                    $priceIdx = array_search('renewal_price', array_map('strtolower', $header));
-                    $autoIdx = array_search('auto_renew', array_map('strtolower', $header));
-                    $dbHostIdx = array_search('db_host', array_map('strtolower', $header));
-                    $dbPortIdx = array_search('db_port', array_map('strtolower', $header));
-                    $dbNameIdx = array_search('db_name', array_map('strtolower', $header));
-                    $dbUserIdx = array_search('db_user', array_map('strtolower', $header));
-                    $dbPassIdx = array_search('db_password', array_map('strtolower', $header));
+
+                    $type = $typeIdx !== false ? strtolower(trim((string) ($row[$typeIdx] ?? 'domain'))) : 'domain';
+                    if ($type !== 'domain' && $type !== 'subdomain') {
+                        $type = 'domain';
+                    }
+
                     $description = $descIdx !== false ? trim((string) ($row[$descIdx] ?? '')) : '';
                     $registrar = $regIdx !== false ? trim((string) ($row[$regIdx] ?? '')) : '';
                     $expiresAt = $expIdx !== false ? trim((string) ($row[$expIdx] ?? '')) : '';
@@ -475,25 +486,62 @@ switch ($action) {
                     } elseif (in_array(strtolower($autoRenew), ['0', 'no', 'false', 'off'], true)) {
                         $autoRenew = '0';
                     }
-                    $encrypted = ($dbPassword !== '' && config('app_key') !== '') ? encrypt_secret($dbPassword) : '';
-                    try {
-                        create_domain($pdo, [
-                            'name' => $name,
-                            'url' => $url,
-                            'description' => $description,
-                            'registrar' => $registrar,
-                            'expires_at' => $expiresAt,
-                            'renewal_price' => $renewalPrice,
-                            'auto_renew' => $autoRenew,
-                            'db_host' => $dbHost,
-                            'db_port' => $dbPort,
-                            'db_name' => $dbName,
-                            'db_user' => $dbUser,
-                            'db_password_enc' => $encrypted,
-                        ]);
-                        $imported++;
-                    } catch (Throwable $e) {
-                        $importErrors[] = "Row " . ($i + 2) . ": " . $e->getMessage();
+
+                    if ($type === 'subdomain') {
+                        $parentDomain = $parentIdx !== false ? trim((string) ($row[$parentIdx] ?? '')) : '';
+                        $fileLocation = $fileLocIdx !== false ? trim((string) ($row[$fileLocIdx] ?? '')) : '';
+                        if ($parentDomain === '') {
+                            $importErrors[] = 'Row ' . ($i + 2) . ': subdomain requires parent_domain.';
+                            continue;
+                        }
+                        if ($fileLocation === '') {
+                            $importErrors[] = 'Row ' . ($i + 2) . ': subdomain requires file_location.';
+                            continue;
+                        }
+                        $parent = get_domain_by_name_or_url($pdo, $parentDomain);
+                        if (!$parent) {
+                            $importErrors[] = 'Row ' . ($i + 2) . ': parent domain "' . $parentDomain . '" not found. Add the domain row before its subdomains.';
+                            continue;
+                        }
+                        $encrypted = ($dbPassword !== '' && config('app_key') !== '') ? encrypt_secret($dbPassword) : '';
+                        try {
+                            create_subdomain($pdo, [
+                                'domain_id' => (int) $parent['id'],
+                                'name' => $name,
+                                'url' => $url,
+                                'file_location' => $fileLocation,
+                                'description' => $description,
+                                'db_host' => $dbHost,
+                                'db_port' => $dbPort,
+                                'db_name' => $dbName,
+                                'db_user' => $dbUser,
+                                'db_password_enc' => $encrypted,
+                            ]);
+                            $imported++;
+                        } catch (Throwable $e) {
+                            $importErrors[] = 'Row ' . ($i + 2) . ': ' . $e->getMessage();
+                        }
+                    } else {
+                        $encrypted = ($dbPassword !== '' && config('app_key') !== '') ? encrypt_secret($dbPassword) : '';
+                        try {
+                            create_domain($pdo, [
+                                'name' => $name,
+                                'url' => $url,
+                                'description' => $description,
+                                'registrar' => $registrar,
+                                'expires_at' => $expiresAt,
+                                'renewal_price' => $renewalPrice,
+                                'auto_renew' => $autoRenew,
+                                'db_host' => $dbHost,
+                                'db_port' => $dbPort,
+                                'db_name' => $dbName,
+                                'db_user' => $dbUser,
+                                'db_password_enc' => $encrypted,
+                            ]);
+                            $imported++;
+                        } catch (Throwable $e) {
+                            $importErrors[] = 'Row ' . ($i + 2) . ': ' . $e->getMessage();
+                        }
                     }
                 }
             }
