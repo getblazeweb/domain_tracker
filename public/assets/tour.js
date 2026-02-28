@@ -14,10 +14,6 @@
     var currentStep = 0;
     var overlay = null;
     var card = null;
-    var backdropTop = null;
-    var backdropLeft = null;
-    var backdropRight = null;
-    var backdropBottom = null;
     var spotlight = null;
 
     function getEl(id) {
@@ -33,23 +29,17 @@
 
         var backdrop = document.createElement('div');
         backdrop.className = 'tour-backdrop';
-        backdrop.innerHTML = '<div id="tour-backdrop-full" class="tour-backdrop-panel"></div>' +
-            '<div id="tour-backdrop-top" class="tour-backdrop-panel tour-backdrop-cutout"></div>' +
-            '<div id="tour-backdrop-left" class="tour-backdrop-panel tour-backdrop-cutout"></div>' +
-            '<div id="tour-backdrop-right" class="tour-backdrop-panel tour-backdrop-cutout"></div>' +
-            '<div id="tour-backdrop-bottom" class="tour-backdrop-panel tour-backdrop-cutout"></div>';
+        backdrop.innerHTML = '<div id="tour-backdrop-full" class="tour-backdrop-panel"></div>';
         overlay.appendChild(backdrop);
-
-        backdropTop = getEl('tour-backdrop-top');
-        backdropLeft = getEl('tour-backdrop-left');
-        backdropRight = getEl('tour-backdrop-right');
-        backdropBottom = getEl('tour-backdrop-bottom');
 
         spotlight = document.createElement('div');
         spotlight.className = 'tour-spotlight';
         spotlight.id = 'tour-spotlight';
         overlay.appendChild(spotlight);
 
+        var cardWrapper = document.createElement('div');
+        cardWrapper.className = 'tour-card-wrapper tour-card-wrapper--centered';
+        cardWrapper.id = 'tour-card-wrapper';
         card = document.createElement('div');
         card.className = 'tour-card';
         card.id = 'tour-card';
@@ -63,7 +53,8 @@
             '<button type="button" class="button primary tour-next" id="tour-next">Next</button>' +
             '</div>' +
             '</div>';
-        overlay.appendChild(card);
+        cardWrapper.appendChild(card);
+        overlay.appendChild(cardWrapper);
 
         document.body.appendChild(overlay);
 
@@ -90,103 +81,42 @@
         }
     }
 
-    function positionCard(targetEl) {
-        var cardEl = getEl('tour-card');
-        var padding = 16;
-        var viewW = window.innerWidth;
-        var viewH = window.innerHeight;
-        var cardRect = cardEl.getBoundingClientRect();
-        var cardW = cardRect.width;
-        var cardH = cardRect.height;
-
-        if (!targetEl) {
-            cardEl.style.top = '50%';
-            cardEl.style.left = '50%';
-            cardEl.style.transform = 'translate(-50%, -50%)';
-            cardEl.classList.remove('tour-card-above', 'tour-card-below', 'tour-card-left', 'tour-card-right');
-            return;
-        }
-
-        var targetRect = targetEl.getBoundingClientRect();
-        var targetCenterX = targetRect.left + targetRect.width / 2;
-        var targetCenterY = targetRect.top + targetRect.height / 2;
-
-        var positions = [
-            { pos: 'above', top: targetRect.top - cardH - padding, left: targetCenterX - cardW / 2 },
-            { pos: 'below', top: targetRect.bottom + padding, left: targetCenterX - cardW / 2 },
-            { pos: 'left', top: targetCenterY - cardH / 2, left: targetRect.left - cardW - padding },
-            { pos: 'right', top: targetCenterY - cardH / 2, left: targetRect.right + padding }
-        ];
-
-        var best = null;
-        for (var i = 0; i < positions.length; i++) {
-            var p = positions[i];
-            var fits = p.left >= 0 && p.left + cardW <= viewW && p.top >= 0 && p.top + cardH <= viewH;
-            if (fits) {
-                best = p;
-                break;
-            }
-        }
-        if (!best) {
-            best = positions[0];
-        }
-
-        cardEl.style.top = Math.max(padding, Math.min(viewH - cardH - padding, best.top)) + 'px';
-        cardEl.style.left = Math.max(padding, Math.min(viewW - cardW - padding, best.left)) + 'px';
-        cardEl.style.transform = 'none';
-        cardEl.classList.remove('tour-card-above', 'tour-card-below', 'tour-card-left', 'tour-card-right');
-        cardEl.classList.add('tour-card-' + best.pos);
+    function positionCard() {
+        var wrapper = getEl('tour-card-wrapper');
+        wrapper.classList.add('tour-card-wrapper--centered');
     }
 
     function updateBackdrop(targetEl) {
         var full = getEl('tour-backdrop-full');
         if (!targetEl) {
             if (full) full.style.display = 'block';
-            backdropTop.style.display = 'none';
-            backdropLeft.style.display = 'none';
-            backdropRight.style.display = 'none';
-            backdropBottom.style.display = 'none';
             spotlight.style.display = 'none';
+            spotlight.style.visibility = 'hidden';
+            spotlight.style.top = '-9999px';
+            spotlight.style.left = '-9999px';
+            spotlight.style.width = '0';
+            spotlight.style.height = '0';
+            spotlight.style.boxShadow = '';
             return;
         }
+
         if (full) full.style.display = 'none';
 
         var rect = targetEl.getBoundingClientRect();
-        var pad = 4;
-        var top = Math.max(0, rect.top - pad);
-        var left = Math.max(0, rect.left - pad);
-        var width = rect.width + pad * 2;
-        var height = rect.height + pad * 2;
-
-        backdropTop.style.display = 'block';
-        backdropTop.style.top = '0';
-        backdropTop.style.left = '0';
-        backdropTop.style.right = '0';
-        backdropTop.style.height = top + 'px';
-
-        backdropBottom.style.display = 'block';
-        backdropBottom.style.top = (top + height) + 'px';
-        backdropBottom.style.left = '0';
-        backdropBottom.style.right = '0';
-        backdropBottom.style.bottom = '0';
-
-        backdropLeft.style.display = 'block';
-        backdropLeft.style.top = top + 'px';
-        backdropLeft.style.left = '0';
-        backdropLeft.style.width = left + 'px';
-        backdropLeft.style.height = height + 'px';
-
-        backdropRight.style.display = 'block';
-        backdropRight.style.top = top + 'px';
-        backdropRight.style.left = (left + width) + 'px';
-        backdropRight.style.right = '0';
-        backdropRight.style.height = height + 'px';
+        var pad = 8;
+        var t = Math.max(0, rect.top - pad);
+        var l = Math.max(0, rect.left - pad);
+        var w = Math.max(24, rect.width + pad * 2);
+        var h = Math.max(24, rect.height + pad * 2);
 
         spotlight.style.display = 'block';
-        spotlight.style.top = top + 'px';
-        spotlight.style.left = left + 'px';
-        spotlight.style.width = width + 'px';
-        spotlight.style.height = height + 'px';
+        spotlight.style.visibility = 'visible';
+        spotlight.style.background = 'transparent';
+        spotlight.style.boxShadow = '0 0 0 9999px rgba(15, 23, 42, 0.55)';
+        spotlight.style.top = t + 'px';
+        spotlight.style.left = l + 'px';
+        spotlight.style.width = w + 'px';
+        spotlight.style.height = h + 'px';
     }
 
     function render() {
@@ -200,11 +130,19 @@
 
         var targetEl = step.target ? document.querySelector(step.target) : null;
         updateBackdrop(targetEl);
-        positionCard(targetEl);
+        positionCard();
 
         if (targetEl) {
             targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(function () {
+                updateBackdrop(targetEl);
+            }, 400);
         }
+
+        requestAnimationFrame(function () {
+            updateBackdrop(targetEl);
+            positionCard();
+        });
     }
 
     function show() {
