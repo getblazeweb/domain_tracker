@@ -656,6 +656,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="brand"><?php echo htmlspecialchars((string) config_value('app_name'), ENT_QUOTES, 'UTF-8'); ?></div>
             <nav class="topbar-actions">
                 <a href="/index.php" class="link">Dashboard</a>
+                <a href="/index.php?action=expiry" class="link">Expiry</a>
+                <a href="/index.php?action=domain_import" class="link">Import</a>
+                <a href="/security.php" class="link">Security</a>
+                <a href="/updater.php" class="link">Update</a>
+                <a href="/index.php" class="link">Help</a>
                 <a href="/updater.php?logout=1" class="link">Logout</a>
             </nav>
         </div>
