@@ -7,7 +7,7 @@ declare(strict_types=1);
         <p class="muted">Download the template, fill it in, then upload or paste. Supports domains and nested subdomains.</p>
     </div>
     <div class="header-actions">
-        <a class="button" href="/download.php?file=import.csv">Download CSV Template</a>
+        <a class="button" href="/download.php?file=import.csv" download="import.csv">Download CSV Template</a>
         <a class="button" href="/index.php">Back</a>
     </div>
 </div>
