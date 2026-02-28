@@ -138,8 +138,11 @@ $otpauth = $pendingSecret !== ''
             <div class="brand"><?php echo htmlspecialchars((string) config('app_name'), ENT_QUOTES, 'UTF-8'); ?></div>
             <nav class="topbar-actions">
                 <a href="/index.php" class="link">Dashboard</a>
+                <a href="/index.php?action=expiry" class="link">Expiry</a>
+                <a href="/index.php?action=domain_import" class="link">Import</a>
                 <a href="/security.php" class="link">Security</a>
                 <a href="/updater.php" class="link">Update</a>
+                <a href="/index.php" class="link">Help</a>
                 <a href="/logout.php" class="link">Logout</a>
             </nav>
         </div>
