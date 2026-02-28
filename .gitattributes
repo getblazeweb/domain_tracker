@@ -7,4 +7,3 @@ composer.lock export-ignore
 phpunit.xml export-ignore
 .github export-ignore
 tests/ export-ignore
-views/ export-ignore
