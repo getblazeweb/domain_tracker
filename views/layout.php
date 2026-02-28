@@ -16,10 +16,11 @@ declare(strict_types=1);
             <div class="brand"><?php echo e((string) config('app_name')); ?></div>
             <nav class="topbar-actions">
                 <a href="/index.php" class="link">Dashboard</a>
-                <a href="/index.php?action=expiry" class="link">Expiry</a>
+                <a href="/index.php?action=expiry" class="link" data-tour="nav-expiry">Expiry</a>
                 <a href="/index.php?action=domain_import" class="link">Import</a>
-                <a href="/security.php" class="link">Security</a>
+                <a href="/security.php" class="link" data-tour="nav-security">Security</a>
                 <a href="/updater.php" class="link">Update</a>
+                <button type="button" class="link tour-help-btn" id="tour-help-btn">Help</button>
                 <a href="/logout.php" class="link">Logout</a>
             </nav>
         </div>
@@ -40,6 +41,15 @@ declare(strict_types=1);
 
         <?php require base_path('views/' . $view . '.php'); ?>
     </main>
+
+    <form id="tour-dismiss-form" method="post" action="/index.php?action=tour_dismiss" style="display:none;">
+        <input type="hidden" name="csrf_token" value="<?php echo e(csrf_token()); ?>">
+    </form>
+
+    <script>
+    window.TOUR_AUTO_SHOW = <?php echo !empty($tourAutoShow) ? 'true' : 'false'; ?>;
+    </script>
+    <script src="/assets/tour.js"></script>
 
     <script>
     (function () {
