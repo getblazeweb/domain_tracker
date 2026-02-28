@@ -462,7 +462,9 @@ textarea {
 }
 
 .expiry-table .table-row {
-    grid-template-columns: 1fr 120px 100px 80px 90px auto;
+    grid-template-columns: 1fr 140px 110px 90px 100px 80px;
+    align-items: center;
+    gap: 16px;
 }
 
 .expiry-urgent {
