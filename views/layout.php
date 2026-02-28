@@ -16,6 +16,8 @@ declare(strict_types=1);
             <div class="brand"><?php echo e((string) config('app_name')); ?></div>
             <nav class="topbar-actions">
                 <a href="/index.php" class="link">Dashboard</a>
+                <a href="/index.php?action=expiry" class="link">Expiry</a>
+                <a href="/index.php?action=domain_import" class="link">Import</a>
                 <a href="/security.php" class="link">Security</a>
                 <a href="/updater.php" class="link">Update</a>
                 <a href="/logout.php" class="link">Logout</a>

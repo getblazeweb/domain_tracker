@@ -8,6 +8,18 @@ declare(strict_types=1);
     </div>
 <?php endif; ?>
 
+<?php if (!empty($expiryAlert) && (int) ($expiryAlert['count_7'] ?? 0) > 0): ?>
+    <div class="alert alert-error update-banner">
+        <?php echo (int) $expiryAlert['count_7']; ?> domain<?php echo (int) $expiryAlert['count_7'] === 1 ? '' : 's'; ?> expiring in 7 days.
+        <a href="/index.php?action=expiry" class="button">View Expiry</a>
+    </div>
+<?php elseif (!empty($expiryAlert) && (int) ($expiryAlert['count_30_total'] ?? 0) > 0): ?>
+    <div class="alert alert-warn update-banner">
+        <?php echo (int) $expiryAlert['count_30_total']; ?> domain<?php echo (int) $expiryAlert['count_30_total'] === 1 ? '' : 's'; ?> expiring in 30 days.
+        <a href="/index.php?action=expiry" class="button">View Expiry</a>
+    </div>
+<?php endif; ?>
+
 <div class="page-header">
     <div>
         <h1>Dashboard</h1>
@@ -21,6 +33,7 @@ declare(strict_types=1);
             <?php endif; ?>
             <button type="submit" class="button primary">Search</button>
         </form>
+        <a class="button" href="/index.php?action=domain_import">Import CSV</a>
         <a class="button primary" href="/index.php?action=domain_create">Add Domain</a>
     </div>
 </div>
@@ -39,6 +52,12 @@ declare(strict_types=1);
             <div>
                 <h2><?php echo e((string) $domain['name']); ?></h2>
                 <div class="badge"><?php echo count($subs); ?> Subdomain<?php echo count($subs) === 1 ? '' : 's'; ?></div>
+                <?php if (!empty($domain['registrar'])): ?>
+                    <span class="muted" style="font-size:12px;"><?php echo e((string) $domain['registrar']); ?></span>
+                <?php endif; ?>
+                <?php if (!empty($domain['expires_at'])): ?>
+                    <span class="muted" style="font-size:12px;">Expires <?php echo e((string) $domain['expires_at']); ?></span>
+                <?php endif; ?>
                 <a class="link external-link" href="<?php echo e((string) $domain['url']); ?>" target="_blank" rel="noreferrer">
                     <?php echo e((string) $domain['url']); ?>
                 </a>

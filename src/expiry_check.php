@@ -42,4 +42,4 @@ function expiry_check_run(PDO $pdo, bool $force = false, int $intervalSeconds = 
     file_put_contents($flagPath, json_encode($payload, JSON_PRETTY_PRINT));
 
     return $payload;
-} 
+}

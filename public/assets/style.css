@@ -439,6 +439,18 @@ textarea {
     border-bottom: 1px solid #e5e7eb;
 }
 
+.expiry-table .table-row {
+    grid-template-columns: 1fr 120px 100px 80px 90px auto;
+}
+
+.expiry-urgent {
+    color: #b91c1c;
+}
+
+.expiry-soon {
+    color: #92400e;
+}
+
 .sub-empty {
     margin-top: 12px;
     color: #6b7280;
