@@ -53,30 +53,44 @@ function update_check_run(string $basePath, bool $force = false, int $intervalSe
         $files = [];
         update_check_recursive_scan($extractedRoot, $extractedRoot, $files);
 
-        $changed = [];
-        foreach ($files as $relative) {
-            if (update_check_should_exclude($relative)) {
-                continue;
-            }
+        $projectFilesFromRemote = array_filter($files, function ($r) {
+            return !update_check_should_exclude($r) && update_check_is_project_file($r);
+        });
+
+        $created = [];
+        $overwritten = [];
+        foreach ($projectFilesFromRemote as $relative) {
             $srcPath = $extractedRoot . DIRECTORY_SEPARATOR . $relative;
             $destPath = $basePath . DIRECTORY_SEPARATOR . $relative;
-
             if (!file_exists($destPath)) {
-                $changed[] = $relative;
-                continue;
-            }
-            if (hash_file('sha256', $srcPath) !== hash_file('sha256', $destPath)) {
-                $changed[] = $relative;
+                $created[] = $relative;
+            } elseif (hash_file('sha256', $srcPath) !== hash_file('sha256', $destPath)) {
+                $overwritten[] = $relative;
             }
         }
 
+        $localFiles = [];
+        $excludeRoots = ['data', 'config'];
+        update_check_collect_local_paths($basePath, $basePath, $localFiles, $excludeRoots);
+        $remoteSet = array_fill_keys($projectFilesFromRemote, true);
+        $deleted = [];
+        foreach ($localFiles as $relative) {
+            if (update_check_should_exclude($relative) || !update_check_is_project_file($relative)) {
+                continue;
+            }
+            if (!isset($remoteSet[$relative])) {
+                $deleted[] = $relative;
+            }
+        }
+
+        $totalCount = count($created) + count($overwritten) + count($deleted);
         $checkedAt = date('c');
         file_put_contents($checkPath, json_encode(['checked_at' => $checkedAt], JSON_PRETTY_PRINT));
 
-        if ($changed) {
+        if ($totalCount > 0) {
             $payload = [
                 'available' => true,
-                'count' => count($changed),
+                'count' => $totalCount,
                 'checked_at' => $checkedAt,
             ];
             file_put_contents($flagPath, json_encode($payload, JSON_PRETTY_PRINT));
@@ -142,7 +156,55 @@ function update_check_should_exclude(string $relative): bool
     if ($relative === 'public/updater.php') {
         return true;
     }
-    return false;
+    $excludedPaths = [
+        '.github/workflows/php.yml',
+        '.github/workflows/phpunit.yml',
+        'composer.json',
+        'composer.lock',
+        'phpunit.xml',
+    ];
+    return in_array($relative, $excludedPaths, true);
+}
+
+/** Same as updater: only count files in allowed dirs/root files. */
+function update_check_is_project_file(string $relative): bool
+{
+    $relative = ltrim(str_replace('\\', '/', $relative), '/');
+    $first = explode('/', $relative)[0] ?? '';
+    $allowedDirs = ['public', 'src', 'views', 'migrations', 'scripts', 'demo', '.github'];
+    if (in_array($first, $allowedDirs, true)) {
+        return true;
+    }
+    $allowedRootFiles = [
+        'composer.json', 'composer.lock', 'phpunit.xml', 'phpunit.xml.dist',
+        'README.md', 'DESCRIPTION.md', 'env.example', '.env.example',
+        'seed_demo.php', '.gitignore', '.htaccess',
+    ];
+    return in_array($relative, $allowedRootFiles, true);
+}
+
+function update_check_collect_local_paths(string $basePath, string $rootPath, array &$paths, array $excludeRoots): void
+{
+    $items = scandir($basePath);
+    if ($items === false) {
+        return;
+    }
+    foreach ($items as $item) {
+        if ($item === '.' || $item === '..') {
+            continue;
+        }
+        $path = $basePath . DIRECTORY_SEPARATOR . $item;
+        $relative = ltrim(str_replace($rootPath . DIRECTORY_SEPARATOR, '', $path), DIRECTORY_SEPARATOR);
+        $first = explode(DIRECTORY_SEPARATOR, $relative)[0] ?? '';
+        if (in_array($first, $excludeRoots, true)) {
+            continue;
+        }
+        if (is_dir($path)) {
+            update_check_collect_local_paths($path, $rootPath, $paths, $excludeRoots);
+        } else {
+            $paths[] = $relative;
+        }
+    }
 }
 
 function update_check_recursive_scan(string $dir, string $root, array &$files): void
