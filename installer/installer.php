@@ -113,6 +113,84 @@ function recursive_copy(string $src, string $dest, array $exclude): void
     }
 }
 
+/** Patch extracted app files so assets load when doc root is the install directory (parent of public/). */
+function apply_asset_path_fix(string $installPath): void
+{
+    $assetUrlFn = "\n/** URL path to the public directory (for assets). Works when doc root is public/ or a parent. */\n"
+        . "function asset_url(string \$path): string\n{\n"
+        . "    \$scriptDir = dirname(\$_SERVER['SCRIPT_NAME'] ?? '/index.php');\n"
+        . "    \$base = (\$scriptDir === '/' || \$scriptDir === '\\\\') ? '' : rtrim(\$scriptDir, '/');\n"
+        . "    return \$base . '/' . ltrim(\$path, '/');\n}\n\n";
+    $bootstrapPath = $installPath . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'bootstrap.php';
+    if (file_exists($bootstrapPath)) {
+        $content = file_get_contents($bootstrapPath);
+        if ($content !== false && !str_contains($content, 'function asset_url(')) {
+            $needle = "}\n\nfunction config(";
+            $replacement = "}\n" . $assetUrlFn . "function config(";
+            $newContent = str_replace($needle, $replacement, $content);
+            if ($newContent !== $content) {
+                file_put_contents($bootstrapPath, $newContent);
+            }
+        }
+    }
+    $loginPath = $installPath . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'login.php';
+    if (file_exists($loginPath)) {
+        $content = file_get_contents($loginPath);
+        if ($content !== false && str_contains($content, 'href="/assets/')) {
+            $content = str_replace(
+                '<link rel="icon" type="image/png" href="/assets/favicon.png">',
+                '<link rel="icon" type="image/png" href="<?php echo htmlspecialchars(asset_url(\'assets/favicon.png\'), ENT_QUOTES, \'UTF-8\'); ?>">',
+                $content
+            );
+            $content = str_replace(
+                '<link rel="stylesheet" href="/assets/style.css">',
+                '<link rel="stylesheet" href="<?php echo htmlspecialchars(asset_url(\'assets/style.css\'), ENT_QUOTES, \'UTF-8\'); ?>">',
+                $content
+            );
+            file_put_contents($loginPath, $content);
+        }
+    }
+    $layoutPath = $installPath . DIRECTORY_SEPARATOR . 'views' . DIRECTORY_SEPARATOR . 'layout.php';
+    if (file_exists($layoutPath)) {
+        $content = file_get_contents($layoutPath);
+        if ($content !== false && str_contains($content, 'href="/assets/')) {
+            $content = str_replace(
+                '<link rel="icon" type="image/png" href="/assets/favicon.png">',
+                '<link rel="icon" type="image/png" href="<?php echo e(asset_url(\'assets/favicon.png\')); ?>">',
+                $content
+            );
+            $content = str_replace(
+                '<link rel="stylesheet" href="/assets/style.css">',
+                '<link rel="stylesheet" href="<?php echo e(asset_url(\'assets/style.css\')); ?>">',
+                $content
+            );
+            $content = str_replace(
+                '<script src="/assets/tour.js"></script>',
+                '<script src="<?php echo e(asset_url(\'assets/tour.js\')); ?>"></script>',
+                $content
+            );
+            file_put_contents($layoutPath, $content);
+        }
+    }
+    $securityPath = $installPath . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'security.php';
+    if (file_exists($securityPath)) {
+        $content = file_get_contents($securityPath);
+        if ($content !== false && str_contains($content, 'href="/assets/')) {
+            $content = str_replace(
+                '<link rel="icon" type="image/png" href="/assets/favicon.png">',
+                '<link rel="icon" type="image/png" href="<?php echo htmlspecialchars(asset_url(\'assets/favicon.png\'), ENT_QUOTES, \'UTF-8\'); ?>">',
+                $content
+            );
+            $content = str_replace(
+                '<link rel="stylesheet" href="/assets/style.css">',
+                '<link rel="stylesheet" href="<?php echo htmlspecialchars(asset_url(\'assets/style.css\'), ENT_QUOTES, \'UTF-8\'); ?>">',
+                $content
+            );
+            file_put_contents($securityPath, $content);
+        }
+    }
+}
+
 function check_requirements(): array
 {
     $errors = [];
@@ -185,6 +263,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!file_exists($indexRedirect)) {
                 file_put_contents($indexRedirect, "<?php\nheader('Location: public/index.php');\nexit;\n");
             }
+            apply_asset_path_fix($installPath);
             $iterator = new RecursiveIteratorIterator(
                 new RecursiveDirectoryIterator($tempDir, RecursiveDirectoryIterator::SKIP_DOTS),
                 RecursiveIteratorIterator::CHILD_FIRST
