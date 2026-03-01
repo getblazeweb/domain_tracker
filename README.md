@@ -5,6 +5,7 @@
 > 🔗 **Live demo:** [domainstracker-demo.blazehost.co](https://domainstracker-demo.blazehost.co) — *login: demo / demo*
 
 ## Features
+- **Web-based installer** — Copy a single file to your server, run it in a browser, and complete a guided setup
 - Secure login (single admin user)
 - File-based storage with SQLite
 - Encrypted database passwords at rest (AES-256-GCM)
@@ -22,6 +23,18 @@
 - Designed with shared hosting environments in mind
 
 ## Setup
+
+### Option A: Web-based Installer (recommended)
+
+1. Copy `installer/installer.php` to your server (e.g. `public_html/installer.php`).
+2. Visit the installer URL in your browser (e.g. `https://your-site.com/installer.php`).
+3. Follow the steps: requirements check → download from GitHub → configure admin credentials and `.env` → complete installation.
+4. After install, point your domain's document root to the `public/` folder, or use the auto-created `index.php` redirect.
+
+See `installer/README.md` for full details.
+
+### Option B: Manual Setup
+
 1. Upload the project to your server.
 2. Set your web root to the `public/` directory.
 3. Create a `.env` file in the project root (same level as `public/`, `src/`, `config/`).
@@ -67,6 +80,7 @@ If you already have an existing `data/app.db`, you may need to add new columns m
 
 ## Project Structure
 ```
+installer/      Web-based installer (installer.php)
 config/         App configuration
 data/           SQLite database file
 migrations/     Schema SQL
