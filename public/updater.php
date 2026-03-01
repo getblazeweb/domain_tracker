@@ -40,6 +40,20 @@ $basePath = dirname(__DIR__);
 load_env($basePath . '/.env');
 $config = require $basePath . '/config/app.php';
 
+/** URL path for assets and app pages when doc root may be parent of public/. */
+function updater_url(string $path): string
+{
+    $scriptDir = dirname($_SERVER['SCRIPT_NAME'] ?? '/updater.php');
+    $base = ($scriptDir === '/' || $scriptDir === '\\') ? '' : rtrim($scriptDir, '/');
+    $path = ltrim($path, '/');
+    $query = '';
+    if (str_contains($path, '?')) {
+        [$path, $q] = explode('?', $path, 2);
+        $query = '?' . $q;
+    }
+    return $base . '/' . $path . $query;
+}
+
 function config_value(string $key, mixed $default = null): mixed
 {
     global $config;
@@ -451,31 +465,31 @@ if ($demoMode) {
     echo '<!doctype html><html lang="en"><head><meta charset="utf-8">';
     echo '<meta name="viewport" content="width=device-width, initial-scale=1">';
     echo '<title>Updater - Demo</title>';
-    echo '<link rel="icon" type="image/png" href="/assets/favicon.png">';
-    echo '<link rel="stylesheet" href="/assets/style.css"></head><body>';
+    echo '<link rel="icon" type="image/png" href="' . htmlspecialchars(updater_url('assets/favicon.png'), ENT_QUOTES, 'UTF-8') . '">';
+    echo '<link rel="stylesheet" href="' . htmlspecialchars(updater_url('assets/style.css'), ENT_QUOTES, 'UTF-8') . '"></head><body>';
     echo '<header class="topbar"><div class="container topbar-inner">';
     echo '<div class="brand">' . htmlspecialchars((string) config_value('app_name'), ENT_QUOTES, 'UTF-8') . '</div>';
     echo '<nav class="topbar-actions">';
-    echo '<a href="/index.php" class="link">Dashboard</a>';
-    echo '<a href="/index.php?action=expiry" class="link">Expiry</a>';
-    echo '<a href="/index.php?action=domain_import" class="link">Import</a>';
-    echo '<a href="/security.php" class="link">Security</a>';
-    echo '<a href="/updater.php" class="link is-disabled">Update</a>';
-    echo '<a href="/index.php" class="link">Help</a>';
-    echo '<a href="/logout.php" class="link">Logout</a>';
+    echo '<a href="' . htmlspecialchars(updater_url('index.php'), ENT_QUOTES, 'UTF-8') . '" class="link">Dashboard</a>';
+    echo '<a href="' . htmlspecialchars(updater_url('index.php?action=expiry'), ENT_QUOTES, 'UTF-8') . '" class="link">Expiry</a>';
+    echo '<a href="' . htmlspecialchars(updater_url('index.php?action=domain_import'), ENT_QUOTES, 'UTF-8') . '" class="link">Import</a>';
+    echo '<a href="' . htmlspecialchars(updater_url('security.php'), ENT_QUOTES, 'UTF-8') . '" class="link">Security</a>';
+    echo '<a href="' . htmlspecialchars(updater_url('updater.php'), ENT_QUOTES, 'UTF-8') . '" class="link is-disabled">Update</a>';
+    echo '<a href="' . htmlspecialchars(updater_url('index.php'), ENT_QUOTES, 'UTF-8') . '" class="link">Help</a>';
+    echo '<a href="' . htmlspecialchars(updater_url('logout.php'), ENT_QUOTES, 'UTF-8') . '" class="link">Logout</a>';
     echo '</nav></div></header>';
     echo '<main class="container"><div class="card is-disabled">';
     echo '<h1>Updater</h1>';
     echo '<div class="alert alert-info">Demo mode: Updates are disabled.</div>';
     echo '<p class="muted">This feature is not available in the demo instance.</p>';
-    echo '<a href="/index.php" class="button primary">Return to Dashboard</a>';
+    echo '<a href="' . htmlspecialchars(updater_url('index.php'), ENT_QUOTES, 'UTF-8') . '" class="button primary">Return to Dashboard</a>';
     echo '</div></main></body></html>';
     exit;
 }
 
 if (isset($_GET['logout'])) {
     logout();
-    header('Location: /updater.php');
+    header('Location: ' . updater_url('updater.php'));
     exit;
 }
 
@@ -498,7 +512,7 @@ if (!is_logged_in()) {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Updater Login</title>
-    <link rel="stylesheet" href="/assets/style.css">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(updater_url('assets/style.css'), ENT_QUOTES, 'UTF-8'); ?>">
 </head>
 <body class="auth-body">
     <div class="auth-card">
@@ -547,7 +561,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">";
         echo "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">";
         echo "<title>Updating...</title>";
-        echo "<link rel=\"stylesheet\" href=\"/assets/style.css\"></head><body>";
+        echo "<link rel=\"stylesheet\" href=\"" . htmlspecialchars(updater_url('assets/style.css'), ENT_QUOTES, 'UTF-8') . "\"></head><body>";
         echo "<main class=\"container\"><div class=\"card\">";
         echo "<h1>Updating...</h1><p class=\"muted\">Please keep this tab open.</p>";
         echo "<div class=\"progress-wrap\"><div class=\"progress-bar\" id=\"progressBar\"></div></div>";
@@ -667,13 +681,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'excluded_changed' => $excludedChanged,
             ]);
             $step(100, 'Update completed successfully.');
-            echo "<div class=\"card\" style=\"margin-top:16px;\"><a class=\"button primary\" href=\"/updater.php\">Return to updater</a></div>";
+            echo "<div class=\"card\" style=\"margin-top:16px;\"><a class=\"button primary\" href=\"" . htmlspecialchars(updater_url('updater.php'), ENT_QUOTES, 'UTF-8') . "\">Return to updater</a></div>";
             echo "</body></html>";
             exit;
         } catch (Throwable $e) {
             echo "<script>updateProgress(100, " . json_encode('Update failed.') . ");</script>";
             echo "<div class=\"alert alert-error\" style=\"margin-top:16px;\">" . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . "</div>";
-            echo "<div class=\"card\" style=\"margin-top:16px;\"><a class=\"button\" href=\"/updater.php\">Return to updater</a></div>";
+            echo "<div class=\"card\" style=\"margin-top:16px;\"><a class=\"button\" href=\"" . htmlspecialchars(updater_url('updater.php'), ENT_QUOTES, 'UTF-8') . "\">Return to updater</a></div>";
             echo "</body></html>";
             exit;
         }
@@ -687,7 +701,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">";
         echo "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">";
         echo "<title>Rolling back...</title>";
-        echo "<link rel=\"stylesheet\" href=\"/assets/style.css\"></head><body>";
+        echo "<link rel=\"stylesheet\" href=\"" . htmlspecialchars(updater_url('assets/style.css'), ENT_QUOTES, 'UTF-8') . "\"></head><body>";
         echo "<main class=\"container\"><div class=\"card\">";
         echo "<h1>Rolling back...</h1><p class=\"muted\">Please keep this tab open.</p>";
         echo "<div class=\"progress-wrap\"><div class=\"progress-bar\" id=\"progressBar\"></div></div>";
@@ -758,13 +772,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'rollback_to' => $target,
             ]);
             $step(100, 'Rollback completed successfully.');
-            echo "<div class=\"card\" style=\"margin-top:16px;\"><a class=\"button primary\" href=\"/updater.php\">Return to updater</a></div>";
+            echo "<div class=\"card\" style=\"margin-top:16px;\"><a class=\"button primary\" href=\"" . htmlspecialchars(updater_url('updater.php'), ENT_QUOTES, 'UTF-8') . "\">Return to updater</a></div>";
             echo "</body></html>";
             exit;
         } catch (Throwable $e) {
             echo "<script>updateProgress(100, " . json_encode('Rollback failed.') . ");</script>";
             echo "<div class=\"alert alert-error\" style=\"margin-top:16px;\">" . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . "</div>";
-            echo "<div class=\"card\" style=\"margin-top:16px;\"><a class=\"button\" href=\"/updater.php\">Return to updater</a></div>";
+            echo "<div class=\"card\" style=\"margin-top:16px;\"><a class=\"button\" href=\"" . htmlspecialchars(updater_url('updater.php'), ENT_QUOTES, 'UTF-8') . "\">Return to updater</a></div>";
             echo "</body></html>";
             exit;
         }
@@ -813,21 +827,21 @@ header('Pragma: no-cache');
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <title>Updater</title>
-    <link rel="icon" type="image/png" href="/assets/favicon.png">
-    <link rel="stylesheet" href="/assets/style.css">
+    <link rel="icon" type="image/png" href="<?php echo htmlspecialchars(updater_url('assets/favicon.png'), ENT_QUOTES, 'UTF-8'); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(updater_url('assets/style.css'), ENT_QUOTES, 'UTF-8'); ?>">
 </head>
 <body>
     <header class="topbar">
         <div class="container topbar-inner">
             <div class="brand"><?php echo htmlspecialchars((string) config_value('app_name'), ENT_QUOTES, 'UTF-8'); ?></div>
             <nav class="topbar-actions">
-                <a href="/index.php" class="link">Dashboard</a>
-                <a href="/index.php?action=expiry" class="link">Expiry</a>
-                <a href="/index.php?action=domain_import" class="link">Import</a>
-                <a href="/security.php" class="link">Security</a>
-                <a href="/updater.php" class="link">Update</a>
-                <a href="/index.php" class="link">Help</a>
-                <a href="/updater.php?logout=1" class="link">Logout</a>
+                <a href="<?php echo htmlspecialchars(updater_url('index.php'), ENT_QUOTES, 'UTF-8'); ?>" class="link">Dashboard</a>
+                <a href="<?php echo htmlspecialchars(updater_url('index.php?action=expiry'), ENT_QUOTES, 'UTF-8'); ?>" class="link">Expiry</a>
+                <a href="<?php echo htmlspecialchars(updater_url('index.php?action=domain_import'), ENT_QUOTES, 'UTF-8'); ?>" class="link">Import</a>
+                <a href="<?php echo htmlspecialchars(updater_url('security.php'), ENT_QUOTES, 'UTF-8'); ?>" class="link">Security</a>
+                <a href="<?php echo htmlspecialchars(updater_url('updater.php'), ENT_QUOTES, 'UTF-8'); ?>" class="link">Update</a>
+                <a href="<?php echo htmlspecialchars(updater_url('index.php'), ENT_QUOTES, 'UTF-8'); ?>" class="link">Help</a>
+                <a href="<?php echo htmlspecialchars(updater_url('updater.php?logout=1'), ENT_QUOTES, 'UTF-8'); ?>" class="link">Logout</a>
             </nav>
         </div>
     </header>
@@ -973,6 +987,7 @@ header('Pragma: no-cache');
     </div>
 
     <script>
+    var UPDATER_ACTION_URL = <?php echo json_encode(updater_url('updater.php')); ?>;
     (function() {
         var csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
         var viewBtns = document.querySelectorAll('.view-update-details-btn');
@@ -1016,7 +1031,7 @@ header('Pragma: no-cache');
             formData.append('csrf_token', csrfToken);
             formData.append('action', 'preview');
 
-            fetch('/updater.php', {
+            fetch(UPDATER_ACTION_URL, {
                 method: 'POST',
                 body: formData
             })
