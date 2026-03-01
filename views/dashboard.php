@@ -4,19 +4,19 @@ declare(strict_types=1);
 <?php if (!empty($updateAvailable)): ?>
     <div class="alert alert-warn update-banner">
         Update available (<?php echo (int) ($updateAvailable['count'] ?? 0); ?> file<?php echo ((int) ($updateAvailable['count'] ?? 0) === 1) ? '' : 's'; ?>). 
-        <a href="/updater.php" class="button">Open Updater</a>
+        <a href="<?php echo e(app_url('updater.php')); ?>" class="button">Open Updater</a>
     </div>
 <?php endif; ?>
 
 <?php if (!empty($expiryAlert) && (int) ($expiryAlert['count_7'] ?? 0) > 0): ?>
     <div class="alert alert-error update-banner">
         <?php echo (int) $expiryAlert['count_7']; ?> domain<?php echo (int) $expiryAlert['count_7'] === 1 ? '' : 's'; ?> expiring in 7 days.
-        <a href="/index.php?action=expiry" class="button">View Expiry</a>
+        <a href="<?php echo e(app_url('index.php?action=expiry')); ?>" class="button">View Expiry</a>
     </div>
 <?php elseif (!empty($expiryAlert) && (int) ($expiryAlert['count_30_total'] ?? 0) > 0): ?>
     <div class="alert alert-warn update-banner">
         <?php echo (int) $expiryAlert['count_30_total']; ?> domain<?php echo (int) $expiryAlert['count_30_total'] === 1 ? '' : 's'; ?> expiring in 30 days.
-        <a href="/index.php?action=expiry" class="button">View Expiry</a>
+        <a href="<?php echo e(app_url('index.php?action=expiry')); ?>" class="button">View Expiry</a>
     </div>
 <?php endif; ?>
 
@@ -26,10 +26,10 @@ declare(strict_types=1);
         <p class="muted">Track domains, subdomains, and database details in one place.</p>
     </div>
     <div class="header-actions">
-        <form method="get" class="search-form" action="/index.php">
+        <form method="get" class="search-form" action="<?php echo e(app_url('index.php')); ?>">
             <input type="text" name="q" placeholder="Search domains and subdomains" value="<?php echo e((string) ($search ?? '')); ?>" data-tour="search">
             <?php if (!empty($search)): ?>
-                <a class="button" href="/index.php">Clear</a>
+                <a class="button" href="<?php echo e(app_url('index.php')); ?>">Clear</a>
             <?php endif; ?>
             <button type="submit" class="button primary">Search</button>
         </form>
@@ -75,9 +75,9 @@ declare(strict_types=1);
                     <button type="button" class="button toggle-btn" data-target="domain-<?php echo $domainId; ?>" aria-expanded="false">
                         Expand
                     </button>
-                    <a class="button" href="/index.php?action=subdomain_create&domain_id=<?php echo (int) $domain['id']; ?>">Add Subdomain</a>
-                    <a class="button" href="/index.php?action=domain_edit&id=<?php echo (int) $domain['id']; ?>">Edit</a>
-                    <form method="post" action="/index.php?action=domain_delete" onsubmit="return confirm('Delete this domain? Subdomains must be deleted first.');">
+                    <a class="button" href="<?php echo e(app_url('index.php?action=subdomain_create&domain_id=' . (int) $domain['id'])); ?>">Add Subdomain</a>
+                    <a class="button" href="<?php echo e(app_url('index.php?action=domain_edit&id=' . (int) $domain['id'])); ?>">Edit</a>
+                    <form method="post" action="<?php echo e(app_url('index.php?action=domain_delete')); ?>" onsubmit="return confirm('Delete this domain? Subdomains must be deleted first.');">
                         <input type="hidden" name="csrf_token" value="<?php echo e(csrf_token()); ?>">
                         <input type="hidden" name="id" value="<?php echo (int) $domain['id']; ?>">
                         <button type="submit" class="button danger">Delete</button>
@@ -114,8 +114,8 @@ declare(strict_types=1);
                                         <button type="button" class="button toggle-btn" data-target="sub-<?php echo $subId; ?>" aria-expanded="false">
                                             Expand
                                         </button>
-                                        <a class="button" href="/index.php?action=subdomain_edit&id=<?php echo (int) $sub['id']; ?>">Edit</a>
-                                        <form method="post" action="/index.php?action=subdomain_delete" onsubmit="return confirm('Delete this subdomain?');">
+                                        <a class="button" href="<?php echo e(app_url('index.php?action=subdomain_edit&id=' . (int) $sub['id'])); ?>">Edit</a>
+                                        <form method="post" action="<?php echo e(app_url('index.php?action=subdomain_delete')); ?>" onsubmit="return confirm('Delete this subdomain?');">
                                             <input type="hidden" name="csrf_token" value="<?php echo e(csrf_token()); ?>">
                                             <input type="hidden" name="id" value="<?php echo (int) $sub['id']; ?>">
                                             <button type="submit" class="button danger">Delete</button>
