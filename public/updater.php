@@ -250,6 +250,14 @@ function update_preview(string $basePath, string $repoZipUrl): array
         $projectFilesFromRemote = array_filter($remoteFiles, function ($r) {
             return !should_exclude($r) && is_project_file($r);
         });
+        $alwaysCheck = ['current_version.php'];
+        foreach ($alwaysCheck as $path) {
+            $srcPath = $extractedRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $path);
+            if (file_exists($srcPath)) {
+                $projectFilesFromRemote[] = $path;
+            }
+        }
+        $projectFilesFromRemote = array_values(array_unique($projectFilesFromRemote));
 
         $created = [];
         $overwritten = [];
@@ -642,6 +650,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $projectFilesFromRemote = array_filter($files, function ($r) {
                 return !should_exclude($r) && is_project_file($r);
             });
+            $alwaysCheck = ['current_version.php'];
+            foreach ($alwaysCheck as $path) {
+                $srcPath = $extractedRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $path);
+                if (file_exists($srcPath)) {
+                    $projectFilesFromRemote[] = $path;
+                }
+            }
+            $projectFilesFromRemote = array_values(array_unique($projectFilesFromRemote));
             foreach ($projectFilesFromRemote as $relative) {
                 $srcPath = $extractedRoot . DIRECTORY_SEPARATOR . $relative;
                 copy_with_backup($srcPath, $basePath, $relative, $backupFilesDir, $manifest);
