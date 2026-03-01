@@ -185,7 +185,7 @@ function update_check_is_project_file(string $relative): bool
     $allowedRootFiles = [
         'composer.json', 'composer.lock', 'phpunit.xml', 'phpunit.xml.dist',
         'README.md', 'DESCRIPTION.md', 'env.example', '.env.example',
-        'seed_demo.php', '.gitignore', '.htaccess',
+        'seed_demo.php', '.gitignore', '.htaccess', 'current_version.php',
     ];
     return in_array($relative, $allowedRootFiles, true);
 }
