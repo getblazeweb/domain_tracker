@@ -15,13 +15,13 @@ declare(strict_types=1);
         <div class="container topbar-inner">
             <div class="brand"><?php echo e((string) config('app_name')); ?></div>
             <nav class="topbar-actions">
-                <a href="/index.php" class="link">Dashboard</a>
-                <a href="/index.php?action=expiry" class="link" data-tour="nav-expiry">Expiry</a>
-                <a href="/index.php?action=domain_import" class="link">Import</a>
-                <a href="/security.php" class="link" data-tour="nav-security">Security</a>
-                <a href="/updater.php" class="link<?php echo config('demo_mode') ? ' is-disabled' : ''; ?>">Update</a>
+                <a href="<?php echo e(app_url('index.php')); ?>" class="link">Dashboard</a>
+                <a href="<?php echo e(app_url('index.php?action=expiry')); ?>" class="link" data-tour="nav-expiry">Expiry</a>
+                <a href="<?php echo e(app_url('index.php?action=domain_import')); ?>" class="link">Import</a>
+                <a href="<?php echo e(app_url('security.php')); ?>" class="link" data-tour="nav-security">Security</a>
+                <a href="<?php echo e(app_url('updater.php')); ?>" class="link<?php echo config('demo_mode') ? ' is-disabled' : ''; ?>">Update</a>
                 <button type="button" class="link tour-help-btn" id="tour-help-btn">Help</button>
-                <a href="/logout.php" class="link">Logout</a>
+                <a href="<?php echo e(app_url('logout.php')); ?>" class="link">Logout</a>
             </nav>
         </div>
     </header>
@@ -42,12 +42,12 @@ declare(strict_types=1);
         <?php require base_path('views/' . $view . '.php'); ?>
     </main>
 
-    <form id="tour-dismiss-form" method="post" action="<?php echo e(asset_url('index.php') . '?action=tour_dismiss'); ?>" style="display:none;">
+    <form id="tour-dismiss-form" method="post" action="<?php echo e(app_url('index.php?action=tour_dismiss')); ?>" style="display:none;">
         <input type="hidden" name="csrf_token" value="<?php echo e(csrf_token()); ?>">
     </form>
 
     <?php if (!empty($showDemoModal)): ?>
-    <?php $demoDismissUrl = '/index.php?action=demo_modal_dismiss&return=' . rawurlencode($demoModalReturn ?? '/index.php'); ?>
+    <?php $demoDismissUrl = app_url('index.php?action=demo_modal_dismiss&return=' . rawurlencode($demoModalReturn ?? app_url('index.php'))); ?>
     <div id="demo-modal" class="modal is-open" role="dialog" aria-labelledby="demo-modal-title" aria-modal="true">
         <div class="modal-backdrop" onclick="window.location='<?php echo e($demoDismissUrl); ?>'"></div>
         <div class="modal-content">
