@@ -4,6 +4,27 @@ declare(strict_types=1);
 require_once __DIR__ . '/../src/bootstrap.php';
 require_once __DIR__ . '/../src/totp.php';
 
+if (!function_exists('app_url')) {
+    function app_url(string $path): string {
+        $path = ltrim($path, '/');
+        $query = '';
+        if (str_contains($path, '?')) {
+            [$path, $q] = explode('?', $path, 2);
+            $query = '?' . $q;
+        }
+        $scriptDir = dirname($_SERVER['SCRIPT_NAME'] ?? '/index.php');
+        $base = ($scriptDir === '/' || $scriptDir === '\\') ? '' : rtrim($scriptDir, '/');
+        return $base . '/' . $path . $query;
+    }
+}
+if (!function_exists('asset_url')) {
+    function asset_url(string $path): string {
+        $scriptDir = dirname($_SERVER['SCRIPT_NAME'] ?? '/index.php');
+        $base = ($scriptDir === '/' || $scriptDir === '\\') ? '' : rtrim($scriptDir, '/');
+        return $base . '/' . ltrim($path, '/');
+    }
+}
+
 if (is_logged_in()) {
     header('Location: ' . app_url('index.php'));
     exit;
