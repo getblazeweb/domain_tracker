@@ -11,4 +11,4 @@ declare(strict_types=1);
  *
  * Examples: 1.0.0 (initial release), 1.1.0 (new feature), 1.0.1 (bug fix), 2.0.0 (breaking)
  */
-return '2.0.3';
+return '2.0.4';
