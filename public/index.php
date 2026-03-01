@@ -14,7 +14,7 @@ function e(string $value): string
 
 function redirect_to(string $path): void
 {
-    header('Location: ' . $path);
+    header('Location: ' . app_url($path));
     exit;
 }
 
@@ -62,6 +62,16 @@ $pdo = db();
 $action = (string) ($_GET['action'] ?? 'dashboard');
 $flash = get_flash();
 $errors = [];
+
+if ($action === 'demo_modal_dismiss') {
+    unset($_SESSION['show_demo_modal']);
+    $return = (string) ($_GET['return'] ?? '');
+    if ($return === '' || $return[0] !== '/' || strpos($return, '//') !== false) {
+        $return = app_url('index.php');
+    }
+    header('Location: ' . $return);
+    exit;
+}
 
 switch ($action) {
     case 'domain_create':
@@ -623,5 +633,7 @@ switch ($action) {
 
 $tourCompleted = get_setting($pdo, 'tour_completed') === '1';
 $tourAutoShow = ($view === 'dashboard' && !$tourCompleted && isset($domains) && empty($domains));
+$showDemoModal = config('demo_mode') && !empty($_SESSION['show_demo_modal']);
+$demoModalReturn = $_SERVER['REQUEST_URI'] ?? '/index.php';
 
 require base_path('views/layout.php');
