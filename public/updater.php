@@ -40,20 +40,6 @@ $basePath = dirname(__DIR__);
 load_env($basePath . '/.env');
 $config = require $basePath . '/config/app.php';
 
-/** URL path for assets and app pages when doc root may be parent of public/. */
-function updater_url(string $path): string
-{
-    $scriptDir = dirname($_SERVER['SCRIPT_NAME'] ?? '/updater.php');
-    $base = ($scriptDir === '/' || $scriptDir === '\\') ? '' : rtrim($scriptDir, '/');
-    $path = ltrim($path, '/');
-    $query = '';
-    if (str_contains($path, '?')) {
-        [$path, $q] = explode('?', $path, 2);
-        $query = '?' . $q;
-    }
-    return $base . '/' . $path . $query;
-}
-
 function config_value(string $key, mixed $default = null): mixed
 {
     global $config;
@@ -102,6 +88,12 @@ function is_logged_in(): bool
 
 function attempt_login(string $username, string $password): bool
 {
+    $demoMode = filter_var(config_value('demo_mode') ?? false, FILTER_VALIDATE_BOOLEAN);
+    if ($demoMode && $username === 'demo' && $password === 'demo') {
+        $_SESSION['updater_logged_in'] = true;
+        return true;
+    }
+
     $expectedUser = (string) config_value('admin_username');
     $expectedHash = (string) config_value('admin_password_hash');
     if ($expectedHash === '' || $expectedUser === '') {
@@ -173,14 +165,7 @@ function should_exclude(string $relative): bool
     if ($relative === 'public/updater.php') {
         return true;
     }
-    $excludedPaths = [
-        '.github/workflows/php.yml',
-        '.github/workflows/phpunit.yml',
-        'composer.json',
-        'composer.lock',
-        'phpunit.xml',
-    ];
-    return in_array($relative, $excludedPaths, true);
+    return false;
 }
 
 /** Allowed directory prefixes and root files for Domain Tracker. Ignores anything else in the repo. */
@@ -250,7 +235,7 @@ function update_preview(string $basePath, string $repoZipUrl): array
         $projectFilesFromRemote = array_filter($remoteFiles, function ($r) {
             return !should_exclude($r) && is_project_file($r);
         });
-        $alwaysCheck = ['current_version.php'];
+        $alwaysCheck = ['current_version.php', 'current_verison.php'];
         foreach ($alwaysCheck as $path) {
             $srcPath = $extractedRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $path);
             if (file_exists($srcPath)) {
@@ -259,22 +244,27 @@ function update_preview(string $basePath, string $repoZipUrl): array
         }
         $projectFilesFromRemote = array_values(array_unique($projectFilesFromRemote));
 
+        $versionFileMap = ['current_verison.php' => 'current_version.php'];
         $created = [];
         $overwritten = [];
         foreach ($projectFilesFromRemote as $relative) {
-            $srcPath = $extractedRoot . DIRECTORY_SEPARATOR . $relative;
-            $destPath = $basePath . DIRECTORY_SEPARATOR . $relative;
+            $destRelative = $versionFileMap[$relative] ?? $relative;
+            $srcPath = $extractedRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relative);
+            $destPath = $basePath . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $destRelative);
             if (!file_exists($destPath)) {
-                $created[] = $relative;
+                $created[] = $destRelative;
             } elseif (hash_file('sha256', $srcPath) !== hash_file('sha256', $destPath)) {
-                $overwritten[] = $relative;
+                $overwritten[] = $destRelative;
             }
         }
 
         $localFiles = [];
         $excludeRoots = ['data', 'config'];
         collect_local_paths($basePath, $localFiles, $excludeRoots);
-        $remoteSet = array_fill_keys($projectFilesFromRemote, true);
+        $remoteSet = [];
+        foreach ($projectFilesFromRemote as $r) {
+            $remoteSet[$versionFileMap[$r] ?? $r] = true;
+        }
         $deleted = [];
         foreach ($localFiles as $relative) {
             if (should_exclude($relative) || !is_project_file($relative)) {
@@ -469,42 +459,15 @@ $errors = [];
 $demoMode = filter_var(config_value('demo_mode') ?? false, FILTER_VALIDATE_BOOLEAN);
 
 $currentVersion = 'unknown';
-$versionPath = $basePath . DIRECTORY_SEPARATOR . 'current_version.php';
+$versionPath = dirname($basePath) . DIRECTORY_SEPARATOR . 'current_version.php';
 if (file_exists($versionPath)) {
     $v = require $versionPath;
     $currentVersion = is_string($v) ? $v : 'unknown';
 }
 
-if ($demoMode) {
-    header('Content-Type: text/html; charset=utf-8');
-    echo '<!doctype html><html lang="en"><head><meta charset="utf-8">';
-    echo '<meta name="viewport" content="width=device-width, initial-scale=1">';
-    echo '<title>Updater - Demo</title>';
-    echo '<link rel="icon" type="image/png" href="' . htmlspecialchars(updater_url('assets/favicon.png'), ENT_QUOTES, 'UTF-8') . '">';
-    echo '<link rel="stylesheet" href="' . htmlspecialchars(updater_url('assets/style.css'), ENT_QUOTES, 'UTF-8') . '"></head><body>';
-    echo '<header class="topbar"><div class="container topbar-inner">';
-    echo '<div class="brand">' . htmlspecialchars((string) config_value('app_name'), ENT_QUOTES, 'UTF-8') . '</div>';
-    echo '<nav class="topbar-actions">';
-    echo '<a href="' . htmlspecialchars(updater_url('index.php'), ENT_QUOTES, 'UTF-8') . '" class="link">Dashboard</a>';
-    echo '<a href="' . htmlspecialchars(updater_url('index.php?action=expiry'), ENT_QUOTES, 'UTF-8') . '" class="link">Expiry</a>';
-    echo '<a href="' . htmlspecialchars(updater_url('index.php?action=domain_import'), ENT_QUOTES, 'UTF-8') . '" class="link">Import</a>';
-    echo '<a href="' . htmlspecialchars(updater_url('security.php'), ENT_QUOTES, 'UTF-8') . '" class="link">Security</a>';
-    echo '<a href="' . htmlspecialchars(updater_url('updater.php'), ENT_QUOTES, 'UTF-8') . '" class="link is-disabled">Update</a>';
-    echo '<a href="' . htmlspecialchars(updater_url('index.php'), ENT_QUOTES, 'UTF-8') . '" class="link">Help</a>';
-    echo '<a href="' . htmlspecialchars(updater_url('logout.php'), ENT_QUOTES, 'UTF-8') . '" class="link">Logout</a>';
-    echo '</nav></div></header>';
-    echo '<main class="container"><div class="card is-disabled">';
-    echo '<h1>Updater</h1>';
-    echo '<div class="alert alert-info">Demo mode: Updates are disabled.</div>';
-    echo '<p class="muted">This feature is not available in the demo instance.</p>';
-    echo '<a href="' . htmlspecialchars(updater_url('index.php'), ENT_QUOTES, 'UTF-8') . '" class="button primary">Return to Dashboard</a>';
-    echo '</div></main></body></html>';
-    exit;
-}
-
 if (isset($_GET['logout'])) {
     logout();
-    header('Location: ' . updater_url('updater.php'));
+    header('Location: /updater.php');
     exit;
 }
 
@@ -527,7 +490,7 @@ if (!is_logged_in()) {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Updater Login</title>
-    <link rel="stylesheet" href="<?php echo htmlspecialchars(updater_url('assets/style.css'), ENT_QUOTES, 'UTF-8'); ?>">
+    <link rel="stylesheet" href="/assets/style.css">
 </head>
 <body class="auth-body">
     <div class="auth-card">
@@ -539,6 +502,10 @@ if (!is_logged_in()) {
             </div>
         </div>
 
+        <?php if ($demoMode): ?>
+            <div class="alert alert-info">Demo mode: Sign in with <strong>demo</strong> / <strong>demo</strong></div>
+        <?php endif; ?>
+
         <?php if ($error !== ''): ?>
             <div class="alert alert-error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
         <?php endif; ?>
@@ -548,11 +515,11 @@ if (!is_logged_in()) {
             <input type="hidden" name="action" value="login">
             <label>
                 Username
-                <input type="text" name="username" required autocomplete="username">
+                <input type="text" name="username" required autocomplete="username" value="<?php echo htmlspecialchars($demoMode ? 'demo' : '', ENT_QUOTES, 'UTF-8'); ?>">
             </label>
             <label>
                 Password
-                <input type="password" name="password" required autocomplete="current-password">
+                <input type="password" name="password" required autocomplete="current-password" value="<?php echo htmlspecialchars($demoMode ? 'demo' : '', ENT_QUOTES, 'UTF-8'); ?>">
             </label>
             <button type="submit" class="button primary">Sign in</button>
         </form>
@@ -568,7 +535,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf((string) ($_POST['csrf_token'] ?? ''));
     $action = (string) ($_POST['action'] ?? '');
 
-    if ($action === 'update') {
+    if ($action === 'update' && $demoMode) {
+        $errors[] = 'Run Update is disabled in demo mode.';
+    } elseif ($action === 'update') {
         while (ob_get_level() > 0) {
             ob_end_flush();
         }
@@ -576,7 +545,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">";
         echo "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">";
         echo "<title>Updating...</title>";
-        echo "<link rel=\"stylesheet\" href=\"" . htmlspecialchars(updater_url('assets/style.css'), ENT_QUOTES, 'UTF-8') . "\"></head><body>";
+        echo "<link rel=\"stylesheet\" href=\"/assets/style.css\"></head><body>";
         echo "<main class=\"container\"><div class=\"card\">";
         echo "<h1>Updating...</h1><p class=\"muted\">Please keep this tab open.</p>";
         echo "<div class=\"progress-wrap\"><div class=\"progress-bar\" id=\"progressBar\"></div></div>";
@@ -650,7 +619,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $projectFilesFromRemote = array_filter($files, function ($r) {
                 return !should_exclude($r) && is_project_file($r);
             });
-            $alwaysCheck = ['current_version.php'];
+            $alwaysCheck = ['current_version.php', 'current_verison.php'];
             foreach ($alwaysCheck as $path) {
                 $srcPath = $extractedRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $path);
                 if (file_exists($srcPath)) {
@@ -658,23 +627,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             $projectFilesFromRemote = array_values(array_unique($projectFilesFromRemote));
+            $versionFileMap = ['current_verison.php' => 'current_version.php'];
             foreach ($projectFilesFromRemote as $relative) {
-                $srcPath = $extractedRoot . DIRECTORY_SEPARATOR . $relative;
-                copy_with_backup($srcPath, $basePath, $relative, $backupFilesDir, $manifest);
-            }
-            $applyFixPath = $basePath . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'apply_asset_path_fix.php';
-            if (file_exists($applyFixPath)) {
-                require_once $applyFixPath;
-                if (function_exists('apply_asset_path_fix')) {
-                    apply_asset_path_fix($basePath);
-                }
+                $destRelative = $versionFileMap[$relative] ?? $relative;
+                $srcPath = $extractedRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relative);
+                copy_with_backup($srcPath, $basePath, $destRelative, $backupFilesDir, $manifest);
             }
 
             $step(75, 'Removing deleted files...');
             $localFiles = [];
             $excludeRoots = ['data', 'config'];
             collect_local_paths($basePath, $localFiles, $excludeRoots);
-            $remoteSet = array_fill_keys($projectFilesFromRemote, true);
+            $remoteSet = [];
+            foreach ($projectFilesFromRemote as $r) {
+                $remoteSet[$versionFileMap[$r] ?? $r] = true;
+            }
             foreach ($localFiles as $relative) {
                 if (should_exclude($relative) || !is_project_file($relative)) {
                     continue;
@@ -711,19 +678,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'excluded_changed' => $excludedChanged,
             ]);
             $step(100, 'Update completed successfully.');
-            echo "<div class=\"card\" style=\"margin-top:16px;\"><a class=\"button primary\" href=\"" . htmlspecialchars(updater_url('updater.php'), ENT_QUOTES, 'UTF-8') . "\">Return to updater</a></div>";
+            echo "<div class=\"card\" style=\"margin-top:16px;\"><a class=\"button primary\" href=\"/updater.php\">Return to updater</a></div>";
             echo "</body></html>";
             exit;
         } catch (Throwable $e) {
             echo "<script>updateProgress(100, " . json_encode('Update failed.') . ");</script>";
             echo "<div class=\"alert alert-error\" style=\"margin-top:16px;\">" . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . "</div>";
-            echo "<div class=\"card\" style=\"margin-top:16px;\"><a class=\"button\" href=\"" . htmlspecialchars(updater_url('updater.php'), ENT_QUOTES, 'UTF-8') . "\">Return to updater</a></div>";
+            echo "<div class=\"card\" style=\"margin-top:16px;\"><a class=\"button\" href=\"/updater.php\">Return to updater</a></div>";
             echo "</body></html>";
             exit;
         }
     }
 
-    if ($action === 'rollback') {
+    if ($action === 'rollback' && $demoMode) {
+        $errors[] = 'Rollback is disabled in demo mode.';
+    } elseif ($action === 'rollback') {
         while (ob_get_level() > 0) {
             ob_end_flush();
         }
@@ -731,7 +700,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">";
         echo "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">";
         echo "<title>Rolling back...</title>";
-        echo "<link rel=\"stylesheet\" href=\"" . htmlspecialchars(updater_url('assets/style.css'), ENT_QUOTES, 'UTF-8') . "\"></head><body>";
+        echo "<link rel=\"stylesheet\" href=\"/assets/style.css\"></head><body>";
         echo "<main class=\"container\"><div class=\"card\">";
         echo "<h1>Rolling back...</h1><p class=\"muted\">Please keep this tab open.</p>";
         echo "<div class=\"progress-wrap\"><div class=\"progress-bar\" id=\"progressBar\"></div></div>";
@@ -802,13 +771,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'rollback_to' => $target,
             ]);
             $step(100, 'Rollback completed successfully.');
-            echo "<div class=\"card\" style=\"margin-top:16px;\"><a class=\"button primary\" href=\"" . htmlspecialchars(updater_url('updater.php'), ENT_QUOTES, 'UTF-8') . "\">Return to updater</a></div>";
+            echo "<div class=\"card\" style=\"margin-top:16px;\"><a class=\"button primary\" href=\"/updater.php\">Return to updater</a></div>";
             echo "</body></html>";
             exit;
         } catch (Throwable $e) {
             echo "<script>updateProgress(100, " . json_encode('Rollback failed.') . ");</script>";
             echo "<div class=\"alert alert-error\" style=\"margin-top:16px;\">" . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . "</div>";
-            echo "<div class=\"card\" style=\"margin-top:16px;\"><a class=\"button\" href=\"" . htmlspecialchars(updater_url('updater.php'), ENT_QUOTES, 'UTF-8') . "\">Return to updater</a></div>";
+            echo "<div class=\"card\" style=\"margin-top:16px;\"><a class=\"button\" href=\"/updater.php\">Return to updater</a></div>";
             echo "</body></html>";
             exit;
         }
@@ -857,21 +826,21 @@ header('Pragma: no-cache');
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <title>Updater</title>
-    <link rel="icon" type="image/png" href="<?php echo htmlspecialchars(updater_url('assets/favicon.png'), ENT_QUOTES, 'UTF-8'); ?>">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars(updater_url('assets/style.css'), ENT_QUOTES, 'UTF-8'); ?>">
+    <link rel="icon" type="image/png" href="/assets/favicon.png">
+    <link rel="stylesheet" href="/assets/style.css">
 </head>
 <body>
     <header class="topbar">
         <div class="container topbar-inner">
             <div class="brand"><?php echo htmlspecialchars((string) config_value('app_name'), ENT_QUOTES, 'UTF-8'); ?></div>
             <nav class="topbar-actions">
-                <a href="<?php echo htmlspecialchars(updater_url('index.php'), ENT_QUOTES, 'UTF-8'); ?>" class="link">Dashboard</a>
-                <a href="<?php echo htmlspecialchars(updater_url('index.php?action=expiry'), ENT_QUOTES, 'UTF-8'); ?>" class="link">Expiry</a>
-                <a href="<?php echo htmlspecialchars(updater_url('index.php?action=domain_import'), ENT_QUOTES, 'UTF-8'); ?>" class="link">Import</a>
-                <a href="<?php echo htmlspecialchars(updater_url('security.php'), ENT_QUOTES, 'UTF-8'); ?>" class="link">Security</a>
-                <a href="<?php echo htmlspecialchars(updater_url('updater.php'), ENT_QUOTES, 'UTF-8'); ?>" class="link">Update</a>
-                <a href="<?php echo htmlspecialchars(updater_url('index.php'), ENT_QUOTES, 'UTF-8'); ?>" class="link">Help</a>
-                <a href="<?php echo htmlspecialchars(updater_url('updater.php?logout=1'), ENT_QUOTES, 'UTF-8'); ?>" class="link">Logout</a>
+                <a href="/index.php" class="link">Dashboard</a>
+                <a href="/index.php?action=expiry" class="link">Expiry</a>
+                <a href="/index.php?action=domain_import" class="link">Import</a>
+                <a href="/security.php" class="link">Security</a>
+                <a href="/updater.php" class="link">Update</a>
+                <a href="/index.php" class="link">Help</a>
+                <a href="/updater.php?logout=1" class="link">Logout</a>
             </nav>
         </div>
     </header>
@@ -894,6 +863,10 @@ header('Pragma: no-cache');
             <?php foreach ($errors as $err): ?>
                 <div class="alert alert-error"><?php echo htmlspecialchars($err, ENT_QUOTES, 'UTF-8'); ?></div>
             <?php endforeach; ?>
+
+            <?php if ($demoMode): ?>
+            <div class="alert alert-info">Demo mode: You can check for updates and view details, but Run Update and Rollback are disabled.</div>
+            <?php endif; ?>
 
             <div class="alert alert-warn">
                 This will overwrite app files. Backups are stored in `data/backups/`.
@@ -960,6 +933,20 @@ header('Pragma: no-cache');
                 <button type="button" class="button view-update-details-btn">View update details</button>
             </div>
 
+            <?php if ($demoMode): ?>
+            <div class="form" style="margin-top:12px;">
+                <button type="button" class="button primary is-disabled" disabled>Run Update</button>
+                <p class="muted" style="margin-top:4px; font-size:0.9rem;">Disabled in demo mode</p>
+            </div>
+            <div class="form" style="margin-top:12px;">
+                <label>Rollback to backup</label>
+                <select disabled class="is-disabled">
+                    <option>Latest backup</option>
+                </select>
+                <button type="button" class="button is-disabled" disabled style="margin-top:8px;">Rollback</button>
+                <p class="muted" style="margin-top:4px; font-size:0.9rem;">Disabled in demo mode</p>
+            </div>
+            <?php else: ?>
             <form method="post" class="form" style="margin-top:12px;">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="hidden" name="action" value="update">
@@ -987,6 +974,7 @@ header('Pragma: no-cache');
                 </label>
                 <button type="submit" class="button" onclick="return confirm('Rollback the selected backup?');">Rollback</button>
             </form>
+            <?php endif; ?>
         </div>
     </main>
 
@@ -1018,7 +1006,6 @@ header('Pragma: no-cache');
     </div>
 
     <script>
-    var UPDATER_ACTION_URL = <?php echo json_encode(updater_url('updater.php')); ?>;
     (function() {
         var csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
         var viewBtns = document.querySelectorAll('.view-update-details-btn');
@@ -1062,7 +1049,7 @@ header('Pragma: no-cache');
             formData.append('csrf_token', csrfToken);
             formData.append('action', 'preview');
 
-            fetch(UPDATER_ACTION_URL, {
+            fetch('/updater.php', {
                 method: 'POST',
                 body: formData
             })
