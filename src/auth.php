@@ -9,13 +9,17 @@ function is_logged_in(): bool
 function require_login(): void
 {
     if (!is_logged_in()) {
-        header('Location: /login.php');
+        header('Location: ' . app_url('login.php'));
         exit;
     }
 }
 
 function verify_credentials(string $username, string $password): bool
 {
+    if (config('demo_mode')) {
+        return $username === 'demo' && $password === 'demo';
+    }
+
     $expectedUser = (string) config('admin_username');
     $expectedHash = (string) config('admin_password_hash');
 
