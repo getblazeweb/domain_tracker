@@ -8,10 +8,10 @@ $action = $mode === 'edit' ? 'subdomain_update' : 'subdomain_store';
         <h1><?php echo $mode === 'edit' ? 'Edit Subdomain' : 'Add Subdomain'; ?></h1>
         <p class="muted">Subdomain details and database credentials.</p>
     </div>
-    <a class="button" href="/index.php">Back</a>
+    <a class="button" href="<?php echo e(app_url('index.php')); ?>">Back</a>
 </div>
 
-<form method="post" class="form card data-form" action="/index.php?action=<?php echo e($action); ?>">
+<form method="post" class="form card data-form" action="<?php echo e(app_url('index.php?action=' . $action)); ?>">
     <input type="hidden" name="csrf_token" value="<?php echo e(csrf_token()); ?>">
     <?php if ($mode === 'edit'): ?>
         <input type="hidden" name="id" value="<?php echo (int) $subdomain['id']; ?>">
