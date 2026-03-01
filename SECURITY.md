@@ -15,7 +15,7 @@ Only the latest `main` branch receives security updates. Upgrade to the latest r
 
 If you believe you have found a security vulnerability in Domain Tracker, please report it responsibly:
 
-1. **Email** the maintainers privately with a clear description of the issue, steps to reproduce, and potential impact at: support at blazehost dot co
+1. **Email** the maintainers privately with a clear description of the issue, steps to reproduce, and potential impact at: [support@blazehost.co](support@blazehost.co)
 2. **Include** the following information:
    - Affected component (e.g. installer, updater, login, crypto)
    - Type of vulnerability (e.g. XSS, CSRF bypass, SQL injection, information disclosure)
