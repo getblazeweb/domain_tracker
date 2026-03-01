@@ -42,7 +42,7 @@ declare(strict_types=1);
         <?php require base_path('views/' . $view . '.php'); ?>
     </main>
 
-    <form id="tour-dismiss-form" method="post" action="/index.php?action=tour_dismiss" style="display:none;">
+    <form id="tour-dismiss-form" method="post" action="<?php echo e(asset_url('index.php') . '?action=tour_dismiss'); ?>" style="display:none;">
         <input type="hidden" name="csrf_token" value="<?php echo e(csrf_token()); ?>">
     </form>
 
