@@ -147,7 +147,7 @@ function update_check_should_exclude(string $relative): bool
 {
     $relative = ltrim(str_replace('\\', '/', $relative), '/');
     $first = explode('/', $relative)[0] ?? '';
-    if ($first === 'data' || $first === 'config') {
+    if ($first === 'data' || $first === 'config' || $first === 'installer') {
         return true;
     }
     if (str_starts_with($relative, '.env')) {
