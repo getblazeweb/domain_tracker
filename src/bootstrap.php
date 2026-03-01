@@ -78,6 +78,18 @@ function asset_url(string $path): string
     return $base . '/' . ltrim($path, '/');
 }
 
+/** URL path for app pages (index, updater, login, etc). Handles paths with query strings. */
+function app_url(string $path): string
+{
+    $path = ltrim($path, '/');
+    $query = '';
+    if (str_contains($path, '?')) {
+        [$path, $q] = explode('?', $path, 2);
+        $query = '?' . $q;
+    }
+    return asset_url($path) . $query;
+}
+
 function config(string $key, mixed $default = null): mixed
 {
     global $config;
