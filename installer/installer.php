@@ -153,6 +153,7 @@ function apply_asset_path_fix(string $installPath): void
     $layoutPath = $installPath . DIRECTORY_SEPARATOR . 'views' . DIRECTORY_SEPARATOR . 'layout.php';
     if (file_exists($layoutPath)) {
         $content = file_get_contents($layoutPath);
+        $layoutChanged = false;
         if ($content !== false && str_contains($content, 'href="/assets/')) {
             $content = str_replace(
                 '<link rel="icon" type="image/png" href="/assets/favicon.png">',
@@ -169,6 +170,22 @@ function apply_asset_path_fix(string $installPath): void
                 '<script src="<?php echo e(asset_url(\'assets/tour.js\')); ?>"></script>',
                 $content
             );
+            $content = str_replace(
+                'action="/index.php?action=tour_dismiss"',
+                'action="<?php echo e(asset_url(\'index.php\') . \'?action=tour_dismiss\'); ?>"',
+                $content
+            );
+            $layoutChanged = true;
+        }
+        if ($content !== false && str_contains($content, 'action="/index.php?action=tour_dismiss"')) {
+            $content = str_replace(
+                'action="/index.php?action=tour_dismiss"',
+                'action="<?php echo e(asset_url(\'index.php\') . \'?action=tour_dismiss\'); ?>"',
+                $content
+            );
+            $layoutChanged = true;
+        }
+        if ($layoutChanged && $content !== false) {
             file_put_contents($layoutPath, $content);
         }
     }
