@@ -63,6 +63,14 @@ function update_check_run(string $basePath, bool $force = false, int $intervalSe
         $projectFilesFromRemote = array_filter($files, function ($r) {
             return !update_check_should_exclude($r) && update_check_is_project_file($r);
         });
+        $alwaysCheck = ['current_version.php'];
+        foreach ($alwaysCheck as $path) {
+            $srcPath = $extractedRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $path);
+            if (file_exists($srcPath)) {
+                $projectFilesFromRemote[] = $path;
+            }
+        }
+        $projectFilesFromRemote = array_values(array_unique($projectFilesFromRemote));
 
         $created = [];
         $overwritten = [];
