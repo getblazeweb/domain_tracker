@@ -70,6 +70,14 @@ function base_path(string $path = ''): string
     return $path === '' ? $base : $base . '/' . ltrim($path, '/');
 }
 
+/** URL path to the public directory (for assets). Works when doc root is public/ or a parent. */
+function asset_url(string $path): string
+{
+    $scriptDir = dirname($_SERVER['SCRIPT_NAME'] ?? '/index.php');
+    $base = ($scriptDir === '/' || $scriptDir === '\\') ? '' : rtrim($scriptDir, '/');
+    return $base . '/' . ltrim($path, '/');
+}
+
 function config(string $key, mixed $default = null): mixed
 {
     global $config;
