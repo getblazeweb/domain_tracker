@@ -7,8 +7,8 @@ declare(strict_types=1);
         <p class="muted">Download the template, fill it in, then upload or paste. Supports domains and nested subdomains.</p>
     </div>
     <div class="header-actions">
-        <a class="button" href="/download.php?file=import.csv" download="import.csv">Download CSV Template</a>
-        <a class="button" href="/index.php">Back</a>
+        <a class="button" href="<?php echo e(app_url('download.php?file=import.csv')); ?>" download="import.csv">Download CSV Template</a>
+        <a class="button" href="<?php echo e(app_url('index.php')); ?>">Back</a>
     </div>
 </div>
 
@@ -17,7 +17,7 @@ declare(strict_types=1);
     <p class="muted"><strong>Subdomains:</strong> <code>type</code>=subdomain, <code>parent_domain</code> (domain name or url), <code>name</code>, <code>url</code>, <code>file_location</code>. Optional: description, db_host, db_port, db_name, db_user, db_password.</p>
     <p class="muted">Put domain rows before their subdomains. Date format: YYYY-MM-DD or MM/DD/YYYY. Auto-renew: 1/0 or yes/no.</p>
 
-    <form method="post" class="form" action="/index.php?action=domain_import_process" enctype="multipart/form-data">
+    <form method="post" class="form" action="<?php echo e(app_url('index.php?action=domain_import_process')); ?>" enctype="multipart/form-data">
         <input type="hidden" name="csrf_token" value="<?php echo e(csrf_token()); ?>">
         <label>
             Upload CSV file
