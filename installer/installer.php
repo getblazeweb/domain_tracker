@@ -134,9 +134,15 @@ function apply_asset_path_fix(string $installPath): void
     if (file_exists($bootstrapPath)) {
         $content = file_get_contents($bootstrapPath);
         if ($content !== false && !str_contains($content, 'function asset_url(')) {
-            $needle = "}\n\nfunction config(";
+            $needles = ["}\n\nfunction config(", "}\nfunction config(", "}\r\n\r\nfunction config(", "}\r\nfunction config("];
             $replacement = "}\n" . $urlFns . "function config(";
-            $newContent = str_replace($needle, $replacement, $content);
+            $newContent = $content;
+            foreach ($needles as $needle) {
+                if (str_contains($content, $needle)) {
+                    $newContent = str_replace($needle, $replacement, $content);
+                    break;
+                }
+            }
             if ($newContent !== $content) {
                 file_put_contents($bootstrapPath, $newContent);
             }
@@ -150,9 +156,15 @@ function apply_asset_path_fix(string $installPath): void
                 . "        \$query = '?' . \$q;\n"
                 . "    }\n"
                 . "    return asset_url(\$path) . \$query;\n}\n\n";
-            $needle2 = "}\n\nfunction config(";
             $replacement2 = "}\n" . $appUrlFn . "function config(";
-            $newContent = str_replace($needle2, $replacement2, $content);
+            $needles = ["}\n\nfunction config(", "}\nfunction config(", "}\r\n\r\nfunction config(", "}\r\nfunction config("];
+            $newContent = $content;
+            foreach ($needles as $needle2) {
+                if (str_contains($content, $needle2)) {
+                    $newContent = str_replace($needle2, $replacement2, $content);
+                    break;
+                }
+            }
             if ($newContent !== $content) {
                 file_put_contents($bootstrapPath, $newContent);
             }
