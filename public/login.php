@@ -11,7 +11,8 @@ if (is_logged_in()) {
 
 $error = '';
 $pdo = db();
-$twoFactorEnabled = get_setting($pdo, 'two_factor_enabled') === '1';
+$demoMode = config('demo_mode');
+$twoFactorEnabled = !$demoMode && get_setting($pdo, 'two_factor_enabled') === '1';
 $twoFactorSecret = $twoFactorEnabled ? (get_setting($pdo, 'two_factor_secret') ?? '') : '';
 $loginWindowMinutes = (int) (get_login_setting($pdo, 'login_window_minutes', '15') ?? 15);
 $loginMaxAttempts = (int) (get_login_setting($pdo, 'login_max_attempts', '5') ?? 5);
@@ -56,6 +57,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Invalid verification code.';
     } else {
         login_user($username);
+        if (config('demo_mode')) {
+            $_SESSION['show_demo_modal'] = true;
+        }
         log_login_attempt($pdo, [
             'username' => $username,
             'ip_address' => $ip,
@@ -69,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$configReady = config('admin_password_hash') !== '' && config('app_key') !== '';
+$configReady = $demoMode || (config('admin_password_hash') !== '' && config('app_key') !== '');
 ?>
 <!doctype html>
 <html lang="en">
@@ -77,8 +81,8 @@ $configReady = config('admin_password_hash') !== '' && config('app_key') !== '';
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Login - <?php echo htmlspecialchars((string) config('app_name'), ENT_QUOTES, 'UTF-8'); ?></title>
-    <link rel="icon" type="image/png" href="/assets/favicon.png">
-    <link rel="stylesheet" href="/assets/style.css">
+    <link rel="icon" type="image/png" href="<?php echo htmlspecialchars(asset_url('assets/favicon.png'), ENT_QUOTES, 'UTF-8'); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(asset_url('assets/style.css'), ENT_QUOTES, 'UTF-8'); ?>">
 </head>
 <body class="auth-body">
     <div class="auth-card">
@@ -96,6 +100,12 @@ $configReady = config('admin_password_hash') !== '' && config('app_key') !== '';
             </div>
         <?php endif; ?>
 
+        <?php if ($demoMode): ?>
+            <div class="alert alert-info">
+                Demo mode: Sign in with <strong>demo</strong> / <strong>demo</strong>
+            </div>
+        <?php endif; ?>
+
         <?php if ($error !== ''): ?>
             <div class="alert alert-error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
         <?php endif; ?>
@@ -104,11 +114,11 @@ $configReady = config('admin_password_hash') !== '' && config('app_key') !== '';
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
             <label>
                 Username
-                <input type="text" name="username" required autocomplete="username">
+                <input type="text" name="username" required autocomplete="username" value="<?php echo htmlspecialchars($demoMode ? 'demo' : '', ENT_QUOTES, 'UTF-8'); ?>">
             </label>
             <label>
                 Password
-                <input type="password" name="password" required autocomplete="current-password">
+                <input type="password" name="password" required autocomplete="current-password" value="<?php echo htmlspecialchars($demoMode ? 'demo' : '', ENT_QUOTES, 'UTF-8'); ?>">
             </label>
             <?php if ($twoFactorEnabled): ?>
                 <label>
