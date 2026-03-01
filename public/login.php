@@ -5,7 +5,7 @@ require_once __DIR__ . '/../src/bootstrap.php';
 require_once __DIR__ . '/../src/totp.php';
 
 if (is_logged_in()) {
-    header('Location: /index.php');
+    header('Location: ' . app_url('index.php'));
     exit;
 }
 
@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'reason' => 'success',
             'created_at' => date('c'),
         ]);
-        header('Location: /index.php');
+        header('Location: ' . app_url('index.php'));
         exit;
     }
 }
