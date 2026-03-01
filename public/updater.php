@@ -460,6 +460,13 @@ $messages = [];
 $errors = [];
 $demoMode = filter_var(config_value('demo_mode') ?? false, FILTER_VALIDATE_BOOLEAN);
 
+$currentVersion = 'unknown';
+$versionPath = $basePath . DIRECTORY_SEPARATOR . 'current_version.php';
+if (file_exists($versionPath)) {
+    $v = require $versionPath;
+    $currentVersion = is_string($v) ? $v : 'unknown';
+}
+
 if ($demoMode) {
     header('Content-Type: text/html; charset=utf-8');
     echo '<!doctype html><html lang="en"><head><meta charset="utf-8">';
@@ -857,6 +864,7 @@ header('Pragma: no-cache');
         <div class="card">
             <h1>Updater</h1>
             <p class="muted">Safely update app files from the repository. Your database and env files are preserved.</p>
+            <p class="muted" style="margin-top:4px;"><strong>Current version:</strong> <?php echo htmlspecialchars($currentVersion, ENT_QUOTES, 'UTF-8'); ?></p>
 
             <?php foreach ($messages as $msg): ?>
                 <div class="alert alert-success">
