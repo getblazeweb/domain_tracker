@@ -50,6 +50,13 @@ function update_check_run(string $basePath, bool $force = false, int $intervalSe
         }
 
         $extractedRoot = $tempDir . DIRECTORY_SEPARATOR . $entries[0];
+        $applyFixPath = $extractedRoot . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'apply_asset_path_fix.php';
+        if (file_exists($applyFixPath)) {
+            require_once $applyFixPath;
+            if (function_exists('apply_asset_path_fix')) {
+                apply_asset_path_fix($extractedRoot);
+            }
+        }
         $files = [];
         update_check_recursive_scan($extractedRoot, $extractedRoot, $files);
 
