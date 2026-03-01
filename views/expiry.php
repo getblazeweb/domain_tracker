@@ -13,8 +13,8 @@ $within90 = $expiryData['within_90'] ?? [];
         <p class="muted">Domains expiring in the next 90 days.</p>
     </div>
     <div class="header-actions">
-        <a class="button refresh-attention" href="/index.php?action=check_expiry">Refresh</a>
-        <a class="button primary" href="/index.php">Dashboard</a>
+        <a class="button refresh-attention" href="<?php echo e(app_url('index.php?action=check_expiry')); ?>">Refresh</a>
+        <a class="button primary" href="<?php echo e(app_url('index.php')); ?>">Dashboard</a>
     </div>
 </div>
 
@@ -43,7 +43,7 @@ $within90 = $expiryData['within_90'] ?? [];
                 <?php foreach ($domains as $d): ?>
                     <div class="table-row">
                         <div>
-                            <a class="link" href="/index.php?action=domain_edit&id=<?php echo (int) $d['id']; ?>"><?php echo e((string) $d['name']); ?></a>
+                            <a class="link" href="<?php echo e(app_url('index.php?action=domain_edit&id=' . (int) $d['id'])); ?>"><?php echo e((string) $d['name']); ?></a>
                             <div class="value mono" style="font-size:12px;"><?php echo e((string) $d['url']); ?></div>
                         </div>
                         <div><?php echo e((string) ($d['registrar'] ?? '—')); ?></div>
@@ -51,7 +51,7 @@ $within90 = $expiryData['within_90'] ?? [];
                         <div><?php echo e((string) ($d['renewal_price'] ?? '—')); ?></div>
                         <div><?php echo ((string) ($d['auto_renew'] ?? '')) === '1' ? 'Yes' : (((string) ($d['auto_renew'] ?? '')) === '0' ? 'No' : '—'); ?></div>
                         <div>
-                            <a class="button tiny" href="/index.php?action=domain_edit&id=<?php echo (int) $d['id']; ?>">Edit</a>
+                            <a class="button tiny" href="<?php echo e(app_url('index.php?action=domain_edit&id=' . (int) $d['id'])); ?>">Edit</a>
                         </div>
                     </div>
                 <?php endforeach; ?>
