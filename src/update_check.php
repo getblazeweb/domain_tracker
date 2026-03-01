@@ -63,7 +63,7 @@ function update_check_run(string $basePath, bool $force = false, int $intervalSe
         $projectFilesFromRemote = array_filter($files, function ($r) {
             return !update_check_should_exclude($r) && update_check_is_project_file($r);
         });
-        $alwaysCheck = ['current_version.php'];
+        $alwaysCheck = ['current_version.php', 'current_verison.php'];
         foreach ($alwaysCheck as $path) {
             $srcPath = $extractedRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $path);
             if (file_exists($srcPath)) {
@@ -72,22 +72,27 @@ function update_check_run(string $basePath, bool $force = false, int $intervalSe
         }
         $projectFilesFromRemote = array_values(array_unique($projectFilesFromRemote));
 
+        $versionFileMap = ['current_verison.php' => 'current_version.php'];
         $created = [];
         $overwritten = [];
         foreach ($projectFilesFromRemote as $relative) {
-            $srcPath = $extractedRoot . DIRECTORY_SEPARATOR . $relative;
-            $destPath = $basePath . DIRECTORY_SEPARATOR . $relative;
+            $destRelative = $versionFileMap[$relative] ?? $relative;
+            $srcPath = $extractedRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relative);
+            $destPath = $basePath . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $destRelative);
             if (!file_exists($destPath)) {
-                $created[] = $relative;
+                $created[] = $destRelative;
             } elseif (hash_file('sha256', $srcPath) !== hash_file('sha256', $destPath)) {
-                $overwritten[] = $relative;
+                $overwritten[] = $destRelative;
             }
         }
 
         $localFiles = [];
         $excludeRoots = ['data', 'config'];
         update_check_collect_local_paths($basePath, $basePath, $localFiles, $excludeRoots);
-        $remoteSet = array_fill_keys($projectFilesFromRemote, true);
+        $remoteSet = [];
+        foreach ($projectFilesFromRemote as $r) {
+            $remoteSet[$versionFileMap[$r] ?? $r] = true;
+        }
         $deleted = [];
         foreach ($localFiles as $relative) {
             if (update_check_should_exclude($relative) || !update_check_is_project_file($relative)) {
