@@ -639,6 +639,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $srcPath = $extractedRoot . DIRECTORY_SEPARATOR . $relative;
                 copy_with_backup($srcPath, $basePath, $relative, $backupFilesDir, $manifest);
             }
+            $applyFixPath = $basePath . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'apply_asset_path_fix.php';
+            if (file_exists($applyFixPath)) {
+                require_once $applyFixPath;
+                if (function_exists('apply_asset_path_fix')) {
+                    apply_asset_path_fix($basePath);
+                }
+            }
 
             $step(75, 'Removing deleted files...');
             $localFiles = [];
