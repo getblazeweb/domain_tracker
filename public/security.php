@@ -7,9 +7,10 @@ require_once __DIR__ . '/../src/totp.php';
 require_login();
 
 $pdo = db();
+$demoMode = config('demo_mode');
 $error = '';
 $message = '';
-$twoFactorEnabled = get_setting($pdo, 'two_factor_enabled') === '1';
+$twoFactorEnabled = !$demoMode && get_setting($pdo, 'two_factor_enabled') === '1';
 $twoFactorSecret = $twoFactorEnabled ? (get_setting($pdo, 'two_factor_secret') ?? '') : '';
 $username = (string) config('admin_username');
 $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
@@ -17,7 +18,7 @@ $userAgent = (string) ($_SERVER['HTTP_USER_AGENT'] ?? 'unknown');
 $loginWindowMinutes = (int) (get_login_setting($pdo, 'login_window_minutes', '15') ?? 15);
 $loginMaxAttempts = (int) (get_login_setting($pdo, 'login_max_attempts', '5') ?? 5);
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$demoMode) {
     verify_csrf((string) ($_POST['csrf_token'] ?? ''));
     $action = (string) ($_POST['action'] ?? '');
 
@@ -129,8 +130,8 @@ $otpauth = $pendingSecret !== ''
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Security - <?php echo htmlspecialchars((string) config('app_name'), ENT_QUOTES, 'UTF-8'); ?></title>
-    <link rel="icon" type="image/png" href="/assets/favicon.png">
-    <link rel="stylesheet" href="/assets/style.css">
+    <link rel="icon" type="image/png" href="<?php echo htmlspecialchars(asset_url('assets/favicon.png'), ENT_QUOTES, 'UTF-8'); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(asset_url('assets/style.css'), ENT_QUOTES, 'UTF-8'); ?>">
 </head>
 <body>
     <header class="topbar">
@@ -141,7 +142,7 @@ $otpauth = $pendingSecret !== ''
                 <a href="/index.php?action=expiry" class="link">Expiry</a>
                 <a href="/index.php?action=domain_import" class="link">Import</a>
                 <a href="/security.php" class="link">Security</a>
-                <a href="/updater.php" class="link">Update</a>
+                <a href="/updater.php" class="link<?php echo $demoMode ? ' is-disabled' : ''; ?>">Update</a>
                 <a href="/index.php" class="link">Help</a>
                 <a href="/logout.php" class="link">Logout</a>
             </nav>
@@ -149,7 +150,13 @@ $otpauth = $pendingSecret !== ''
     </header>
 
     <main class="container">
-        <div class="card">
+        <?php if ($demoMode): ?>
+            <div class="alert alert-info">
+                Demo mode: Security features (2FA, login limits, key rotation, password reset) are disabled.
+            </div>
+        <?php endif; ?>
+
+        <div class="card<?php echo $demoMode ? ' is-disabled' : ''; ?>">
             <h1>Security</h1>
             <p class="muted">Manage two-factor authentication for your admin account.</p>
 
@@ -160,6 +167,12 @@ $otpauth = $pendingSecret !== ''
             <?php if ($error !== ''): ?>
                 <div class="alert alert-error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
             <?php endif; ?>
+
+            <div class="card-section">
+                <h2>Password Reset</h2>
+                <p class="muted">Request a password reset link via email.</p>
+                <button type="button" class="button" disabled>Request Password Reset</button>
+            </div>
 
             <div class="card-section">
                 <h2>Login Limits</h2>
@@ -284,7 +297,7 @@ $otpauth = $pendingSecret !== ''
                     <div class="table-row">
                         <div><?php echo htmlspecialchars((string) $attempt['created_at'], ENT_QUOTES, 'UTF-8'); ?></div>
                         <div><?php echo htmlspecialchars((string) $attempt['username'], ENT_QUOTES, 'UTF-8'); ?></div>
-                        <div><?php echo htmlspecialchars((string) $attempt['ip_address'], ENT_QUOTES, 'UTF-8'); ?></div>
+                        <div><?php echo htmlspecialchars(preg_replace('/[0-9a-fA-F]/', 'x', (string) $attempt['ip_address']), ENT_QUOTES, 'UTF-8'); ?></div>
                         <div class="truncate" title="<?php echo htmlspecialchars((string) $attempt['user_agent'], ENT_QUOTES, 'UTF-8'); ?>">
                             <?php echo htmlspecialchars((string) $attempt['user_agent'], ENT_QUOTES, 'UTF-8'); ?>
                         </div>
